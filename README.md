@@ -1,3 +1,3 @@
 # Genealogy
 
-[![alt](./genealogie_v5.png)]
+![alt](./genealogie_v5.png)
