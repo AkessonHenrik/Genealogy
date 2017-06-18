@@ -1,3 +1,3 @@
 # Genealogy
 
-![alt](./Main.svg)
+![alt](./Main.png)
