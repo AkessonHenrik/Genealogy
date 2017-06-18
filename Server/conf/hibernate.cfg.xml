@@ -1,53 +1,52 @@
 <?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE hibernate-configuration PUBLIC
-        "-//Hibernate/Hibernate Configuration DTD//EN"
-        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+    "-//Hibernate/Hibernate Configuration DTD//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
-    <session-factory>
-        <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
-        <property name="hibernate.connection.username">postgres</property>
-        <property name="hibernate.connection.password">root</property>
-        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/postgres?currentSchema=familytree</property>
-        <mapping class="models.Access"/>
-        <mapping class="models.Account"/>
-        <mapping class="models.Adoptivechild"/>
-        <mapping class="models.Biologicalchild"/>
-        <mapping class="models.City"/>
-        <mapping class="models.Cityprovince"/>
-        <mapping class="models.Comment"/>
-        <mapping class="models.Company"/>
-        <mapping class="models.Country"/>
-        <mapping class="models.Event"/>
-        <mapping class="models.Eventmedia"/>
-        <mapping class="models.Ghost"/>
-        <mapping class="models.Group"/>
-        <mapping class="models.Groupaccess"/>
-        <mapping class="models.Locatedevent"/>
-        <mapping class="models.Location"/>
-        <mapping class="models.Media"/>
-        <mapping class="models.Moveevent"/>
-        <mapping class="models.Notvisibleby"/>
-        <mapping class="models.Parentsof"/>
-        <mapping class="models.Pendingtagged"/>
-        <mapping class="models.Peopleentity"/>
-        <mapping class="models.Post"/>
-        <mapping class="models.Profile"/>
-        <mapping class="models.Profileaccess"/>
-        <mapping class="models.Province"/>
-        <mapping class="models.Provincecountry"/>
-        <mapping class="models.Relationship"/>
-        <mapping class="models.Singletime"/>
-        <mapping class="models.Tagged"/>
-        <mapping class="models.Time"/>
-        <mapping class="models.Timedentity"/>
-        <mapping class="models.Timedentityowner"/>
-        <mapping class="models.Timeinterval"/>
-        <mapping class="models.Visibleby"/>
-        <mapping class="models.Workevent"/>
-        <!-- <property name="connection.username"/> -->
-        <!-- <property name="connection.password"/> -->
+  <session-factory>
+    <property name="connection.url">jdbc:postgresql://localhost:5432/postgres</property>
+    <property name="connection.driver_class">org.postgresql.Driver</property>
+      <mapping class="models.Access"/>
+      <mapping resource="hibernate.cfg.xml"/>
+      <mapping class="models.Account"/>
+      <mapping class="models.Adoptivechild"/>
+      <mapping class="models.Biologicalchild"/>
+      <mapping class="models.City"/>
+      <mapping class="models.Cityprovince"/>
+      <mapping class="models.Comment"/>
+      <mapping class="models.Company"/>
+      <mapping class="models.Country"/>
+      <mapping class="models.Event"/>
+      <mapping class="models.Eventmedia"/>
+      <mapping class="models.Ghost"/>
+      <mapping class="models.Group"/>
+      <mapping class="models.Groupaccess"/>
+      <mapping class="models.Locatedevent"/>
+      <mapping class="models.Location"/>
+      <mapping class="models.Media"/>
+      <mapping class="models.Moveevent"/>
+      <mapping class="models.Notvisibleby"/>
+      <mapping class="models.Parentsof"/>
+      <mapping class="models.Pendingtagged"/>
+      <mapping class="models.Peopleentity"/>
+      <mapping class="models.Post"/>
+      <mapping class="models.Profile"/>
+      <mapping class="models.Profileaccess"/>
+      <mapping class="models.Province"/>
+      <mapping class="models.Provincecountry"/>
+      <mapping class="models.Relationship"/>
+      <mapping class="models.Singletime"/>
+      <mapping class="models.Tagged"/>
+      <mapping class="models.Time"/>
+      <mapping class="models.Timedentity"/>
+      <mapping class="models.Timedentityowner"/>
+      <mapping class="models.Timeinterval"/>
+      <mapping class="models.Visibleby"/>
+      <mapping class="models.Workevent"/>
+      <!-- <property name="connection.username"/> -->
+    <!-- <property name="connection.password"/> -->
 
-        <!-- DB schema will be updated if needed -->
-        <!-- <property name="hbm2ddl.auto">update</property> -->
-    </session-factory>
+    <!-- DB schema will be updated if needed -->
+    <!-- <property name="hbm2ddl.auto">update</property> -->
+  </session-factory>
 </hibernate-configuration>

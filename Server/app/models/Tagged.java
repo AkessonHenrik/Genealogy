@@ -1,36 +1,46 @@
 package models;
 
+import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import javax.persistence.IdClass;
 
 /**
- * Created by Henrik on 17/06/2017.
+ * Created by Henrik on 18/06/2017.
  */
 @Entity
-@IdClass(TaggedPK.class)
 public class Tagged {
-    private int profileid;
-    private int postid;
+    private int id;
+    private Integer profileid;
+    private Integer postid;
 
     @Id
+    @Column(name = "id")
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    @Basic
     @Column(name = "profileid")
-    public int getProfileid() {
+    public Integer getProfileid() {
         return profileid;
     }
 
-    public void setProfileid(int profileid) {
+    public void setProfileid(Integer profileid) {
         this.profileid = profileid;
     }
 
-    @Id
+    @Basic
     @Column(name = "postid")
-    public int getPostid() {
+    public Integer getPostid() {
         return postid;
     }
 
-    public void setPostid(int postid) {
+    public void setPostid(Integer postid) {
         this.postid = postid;
     }
 
@@ -41,16 +51,18 @@ public class Tagged {
 
         Tagged tagged = (Tagged) o;
 
-        if (profileid != tagged.profileid) return false;
-        if (postid != tagged.postid) return false;
+        if (id != tagged.id) return false;
+        if (profileid != null ? !profileid.equals(tagged.profileid) : tagged.profileid != null) return false;
+        if (postid != null ? !postid.equals(tagged.postid) : tagged.postid != null) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = profileid;
-        result = 31 * result + postid;
+        int result = id;
+        result = 31 * result + (profileid != null ? profileid.hashCode() : 0);
+        result = 31 * result + (postid != null ? postid.hashCode() : 0);
         return result;
     }
 }

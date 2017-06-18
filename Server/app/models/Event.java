@@ -4,17 +4,15 @@ import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import java.io.Serializable;
 
 /**
- * Created by Henrik on 17/06/2017.
+ * Created by Henrik on 18/06/2017.
  */
 @Entity
 public class Event {
     private int postid;
     private String name;
     private String description;
-    private Serializable visibility;
 
     @Id
     @Column(name = "postid")
@@ -46,16 +44,6 @@ public class Event {
         this.description = description;
     }
 
-    @Basic
-    @Column(name = "visibility")
-    public Serializable getVisibility() {
-        return visibility;
-    }
-
-    public void setVisibility(Serializable visibility) {
-        this.visibility = visibility;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -66,7 +54,6 @@ public class Event {
         if (postid != event.postid) return false;
         if (name != null ? !name.equals(event.name) : event.name != null) return false;
         if (description != null ? !description.equals(event.description) : event.description != null) return false;
-        if (visibility != null ? !visibility.equals(event.visibility) : event.visibility != null) return false;
 
         return true;
     }
@@ -76,7 +63,6 @@ public class Event {
         int result = postid;
         result = 31 * result + (name != null ? name.hashCode() : 0);
         result = 31 * result + (description != null ? description.hashCode() : 0);
-        result = 31 * result + (visibility != null ? visibility.hashCode() : 0);
         return result;
     }
 }

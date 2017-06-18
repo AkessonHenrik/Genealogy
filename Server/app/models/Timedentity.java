@@ -4,14 +4,16 @@ import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import java.io.Serializable;
 
 /**
- * Created by Henrik on 17/06/2017.
+ * Created by Henrik on 18/06/2017.
  */
 @Entity
 public class Timedentity {
     private int id;
     private int timeid;
+    private Serializable visibility;
 
     @Id
     @Column(name = "id")
@@ -33,6 +35,16 @@ public class Timedentity {
         this.timeid = timeid;
     }
 
+    @Basic
+    @Column(name = "visibility")
+    public Serializable getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(Serializable visibility) {
+        this.visibility = visibility;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -42,6 +54,7 @@ public class Timedentity {
 
         if (id != that.id) return false;
         if (timeid != that.timeid) return false;
+        if (visibility != null ? !visibility.equals(that.visibility) : that.visibility != null) return false;
 
         return true;
     }
@@ -50,6 +63,7 @@ public class Timedentity {
     public int hashCode() {
         int result = id;
         result = 31 * result + timeid;
+        result = 31 * result + (visibility != null ? visibility.hashCode() : 0);
         return result;
     }
 }

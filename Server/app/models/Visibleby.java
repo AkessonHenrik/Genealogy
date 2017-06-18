@@ -1,36 +1,46 @@
 package models;
 
+import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import javax.persistence.IdClass;
 
 /**
- * Created by Henrik on 17/06/2017.
+ * Created by Henrik on 18/06/2017.
  */
 @Entity
-@IdClass(VisiblebyPK.class)
 public class Visibleby {
-    private int timedentityid;
-    private int accessid;
+    private int id;
+    private Integer timedentityid;
+    private Integer accessid;
 
     @Id
+    @Column(name = "id")
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    @Basic
     @Column(name = "timedentityid")
-    public int getTimedentityid() {
+    public Integer getTimedentityid() {
         return timedentityid;
     }
 
-    public void setTimedentityid(int timedentityid) {
+    public void setTimedentityid(Integer timedentityid) {
         this.timedentityid = timedentityid;
     }
 
-    @Id
+    @Basic
     @Column(name = "accessid")
-    public int getAccessid() {
+    public Integer getAccessid() {
         return accessid;
     }
 
-    public void setAccessid(int accessid) {
+    public void setAccessid(Integer accessid) {
         this.accessid = accessid;
     }
 
@@ -41,16 +51,19 @@ public class Visibleby {
 
         Visibleby visibleby = (Visibleby) o;
 
-        if (timedentityid != visibleby.timedentityid) return false;
-        if (accessid != visibleby.accessid) return false;
+        if (id != visibleby.id) return false;
+        if (timedentityid != null ? !timedentityid.equals(visibleby.timedentityid) : visibleby.timedentityid != null)
+            return false;
+        if (accessid != null ? !accessid.equals(visibleby.accessid) : visibleby.accessid != null) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = timedentityid;
-        result = 31 * result + accessid;
+        int result = id;
+        result = 31 * result + (timedentityid != null ? timedentityid.hashCode() : 0);
+        result = 31 * result + (accessid != null ? accessid.hashCode() : 0);
         return result;
     }
 }

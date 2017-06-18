@@ -1,36 +1,46 @@
 package models;
 
+import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import javax.persistence.IdClass;
 
 /**
- * Created by Henrik on 17/06/2017.
+ * Created by Henrik on 18/06/2017.
  */
 @Entity
-@IdClass(TimedentityownerPK.class)
 public class Timedentityowner {
-    private int timedentityid;
-    private int peopleorrelationshipid;
+    private int id;
+    private Integer timedentityid;
+    private Integer peopleorrelationshipid;
 
     @Id
+    @Column(name = "id")
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    @Basic
     @Column(name = "timedentityid")
-    public int getTimedentityid() {
+    public Integer getTimedentityid() {
         return timedentityid;
     }
 
-    public void setTimedentityid(int timedentityid) {
+    public void setTimedentityid(Integer timedentityid) {
         this.timedentityid = timedentityid;
     }
 
-    @Id
+    @Basic
     @Column(name = "peopleorrelationshipid")
-    public int getPeopleorrelationshipid() {
+    public Integer getPeopleorrelationshipid() {
         return peopleorrelationshipid;
     }
 
-    public void setPeopleorrelationshipid(int peopleorrelationshipid) {
+    public void setPeopleorrelationshipid(Integer peopleorrelationshipid) {
         this.peopleorrelationshipid = peopleorrelationshipid;
     }
 
@@ -41,16 +51,20 @@ public class Timedentityowner {
 
         Timedentityowner that = (Timedentityowner) o;
 
-        if (timedentityid != that.timedentityid) return false;
-        if (peopleorrelationshipid != that.peopleorrelationshipid) return false;
+        if (id != that.id) return false;
+        if (timedentityid != null ? !timedentityid.equals(that.timedentityid) : that.timedentityid != null)
+            return false;
+        if (peopleorrelationshipid != null ? !peopleorrelationshipid.equals(that.peopleorrelationshipid) : that.peopleorrelationshipid != null)
+            return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = timedentityid;
-        result = 31 * result + peopleorrelationshipid;
+        int result = id;
+        result = 31 * result + (timedentityid != null ? timedentityid.hashCode() : 0);
+        result = 31 * result + (peopleorrelationshipid != null ? peopleorrelationshipid.hashCode() : 0);
         return result;
     }
 }

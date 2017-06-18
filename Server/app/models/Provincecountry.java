@@ -1,14 +1,14 @@
 package models;
 
-import javax.persistence.*;
+import javax.persistence.Basic;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 
 /**
- * Created by Henrik on 17/06/2017.
+ * Created by Henrik on 18/06/2017.
  */
 @Entity
-@Table(name = "provincecountry",
-        uniqueConstraints = {@UniqueConstraint(columnNames =
-                {"countryid", "provinceid"})})
 public class Provincecountry {
     private int id;
     private Integer provinceid;
@@ -16,7 +16,6 @@ public class Provincecountry {
 
     @Id
     @Column(name = "id")
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
     public int getId() {
         return id;
     }

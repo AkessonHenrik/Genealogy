@@ -4,17 +4,25 @@ import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import java.io.Serializable;
 
 /**
- * Created by Henrik on 17/06/2017.
+ * Created by Henrik on 18/06/2017.
  */
 @Entity
-public class Eventmedia implements Serializable {
-    @Id
+public class Eventmedia {
+    private int id;
     private Integer mediaid;
-    @Id
     private Integer eventid;
+
+    @Id
+    @Column(name = "id")
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
 
     @Basic
     @Column(name = "mediaid")
@@ -43,6 +51,7 @@ public class Eventmedia implements Serializable {
 
         Eventmedia that = (Eventmedia) o;
 
+        if (id != that.id) return false;
         if (mediaid != null ? !mediaid.equals(that.mediaid) : that.mediaid != null) return false;
         if (eventid != null ? !eventid.equals(that.eventid) : that.eventid != null) return false;
 
@@ -51,7 +60,8 @@ public class Eventmedia implements Serializable {
 
     @Override
     public int hashCode() {
-        int result = mediaid != null ? mediaid.hashCode() : 0;
+        int result = id;
+        result = 31 * result + (mediaid != null ? mediaid.hashCode() : 0);
         result = 31 * result + (eventid != null ? eventid.hashCode() : 0);
         return result;
     }
