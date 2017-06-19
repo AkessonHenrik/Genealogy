@@ -156,13 +156,13 @@ class SearchResult {
     public int id;
     public String firstname;
     public String lastname;
-    public String profilePicture;
+    public String image;
 
     SearchResult(int id, String firstname, String lastname, String profilePicture) {
         this.id = id;
         this.firstname = firstname;
         this.lastname = lastname;
-        this.profilePicture = profilePicture;
+        this.image = profilePicture;
     }
 
     @Override
@@ -171,7 +171,7 @@ class SearchResult {
                 "id=" + id +
                 ", firstname='" + firstname + '\'' +
                 ", lastname='" + lastname + '\'' +
-                ", profilePicture='" + profilePicture + '\'' +
+                ", profilePicture='" + image + '\'' +
                 '}';
     }
 }

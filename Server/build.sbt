@@ -20,4 +20,5 @@ libraryDependencies ++= Seq(
 
 PlayKeys.externalizeResources := false
 
+libraryDependencies += filters
 
