@@ -17,7 +17,7 @@ public class Profile {
     private int profilepicture;
     private int born;
     private Integer died;
-    private Serializable gender;
+    private Integer gender;
 
     @Id
     @Column(name = "peopleentityid")
@@ -81,11 +81,11 @@ public class Profile {
 
     @Basic
     @Column(name = "gender")
-    public Serializable getGender() {
+    public Integer getGender() {
         return gender;
     }
 
-    public void setGender(Serializable gender) {
+    public void setGender(Integer gender) {
         this.gender = gender;
     }
 
@@ -102,7 +102,7 @@ public class Profile {
         if (firstname != null ? !firstname.equals(profile.firstname) : profile.firstname != null) return false;
         if (lastname != null ? !lastname.equals(profile.lastname) : profile.lastname != null) return false;
         if (died != null ? !died.equals(profile.died) : profile.died != null) return false;
-        if (gender != null ? !gender.equals(profile.gender) : profile.gender != null) return false;
+//        if (gender != null ? !gender.equals(profile.gender) : profile.gender != null) return false;
 
         return true;
     }

@@ -1,9 +1,6 @@
 package models;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.io.Serializable;
 
 /**
@@ -13,10 +10,11 @@ import java.io.Serializable;
 public class Timedentity {
     private int id;
     private int timeid;
-    private Serializable visibility;
+    private Integer visibility;
 
     @Id
     @Column(name = "id")
+    @GeneratedValue(strategy= GenerationType.IDENTITY)
     public int getId() {
         return id;
     }
@@ -37,11 +35,11 @@ public class Timedentity {
 
     @Basic
     @Column(name = "visibility")
-    public Serializable getVisibility() {
+    public Integer getVisibility() {
         return visibility;
     }
 
-    public void setVisibility(Serializable visibility) {
+    public void setVisibility(Integer visibility) {
         this.visibility = visibility;
     }
 
@@ -54,7 +52,7 @@ public class Timedentity {
 
         if (id != that.id) return false;
         if (timeid != that.timeid) return false;
-        if (visibility != null ? !visibility.equals(that.visibility) : that.visibility != null) return false;
+        if (visibility != null ? !(visibility == that.visibility) : that.visibility != null) return false;
 
         return true;
     }

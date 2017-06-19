@@ -13,7 +13,7 @@ import java.io.Serializable;
 public class Media {
     private int postid;
     private String path;
-    private Serializable type;
+    private Integer type;
 
     @Id
     @Column(name = "postid")
@@ -37,11 +37,11 @@ public class Media {
 
     @Basic
     @Column(name = "type")
-    public Serializable getType() {
+    public Integer getType() {
         return type;
     }
 
-    public void setType(Serializable type) {
+    public void setType(Integer type) {
         this.type = type;
     }
 

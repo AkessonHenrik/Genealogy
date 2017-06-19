@@ -3,7 +3,14 @@
 # ~~~~
 
 # Home page
-GET     /                           @controllers.Application.updateSomething
+POST     /location                           @controllers.Application.createLocation
+GET     /location                           @controllers.Application.getLocations
+
+POST /signup                                @controllers.AccountController.addAccount
+POST /profile                               @controllers.ProfileController.createProfile
+
+GET /family/:id                            @controllers.RelationshipController.getFamily(id: Integer)
+POST /relationships                         @controllers.RelationshipController.createRelationship
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)

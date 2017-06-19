@@ -11,19 +11,19 @@ import java.io.Serializable;
  */
 @Entity
 public class Relationship {
-    private int peopleentityid;
+    private int id;
     private Integer profile1;
     private Integer profile2;
-    private Serializable type;
+    private Integer type;
 
     @Id
-    @Column(name = "peopleentityid")
-    public int getPeopleentityid() {
-        return peopleentityid;
+    @Column(name = "id")
+    public int getId() {
+        return id;
     }
 
-    public void setPeopleentityid(int peopleentityid) {
-        this.peopleentityid = peopleentityid;
+    public void setId(int peopleentityid) {
+        this.id = peopleentityid;
     }
 
     @Basic
@@ -48,11 +48,11 @@ public class Relationship {
 
     @Basic
     @Column(name = "type")
-    public Serializable getType() {
+    public Integer getType() {
         return type;
     }
 
-    public void setType(Serializable type) {
+    public void setType(Integer type) {
         this.type = type;
     }
 
@@ -63,7 +63,7 @@ public class Relationship {
 
         Relationship that = (Relationship) o;
 
-        if (peopleentityid != that.peopleentityid) return false;
+        if (id != that.id) return false;
         if (profile1 != null ? !profile1.equals(that.profile1) : that.profile1 != null) return false;
         if (profile2 != null ? !profile2.equals(that.profile2) : that.profile2 != null) return false;
         if (type != null ? !type.equals(that.type) : that.type != null) return false;
@@ -73,7 +73,7 @@ public class Relationship {
 
     @Override
     public int hashCode() {
-        int result = peopleentityid;
+        int result = id;
         result = 31 * result + (profile1 != null ? profile1.hashCode() : 0);
         result = 31 * result + (profile2 != null ? profile2.hashCode() : 0);
         result = 31 * result + (type != null ? type.hashCode() : 0);
