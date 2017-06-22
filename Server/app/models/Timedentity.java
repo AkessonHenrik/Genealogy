@@ -8,18 +8,18 @@ import java.io.Serializable;
  */
 @Entity
 public class Timedentity {
-    private int id;
+    private Integer id;
     private int timeid;
     private Integer visibility;
 
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy= GenerationType.IDENTITY)
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

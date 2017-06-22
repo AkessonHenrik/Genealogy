@@ -15,7 +15,9 @@ public class AccountController extends Controller {
 
     @Transactional
     public Result addAccount() {
+        System.out.println("HEOIE");
         JsonNode json = request().body().asJson();
+        System.out.println(json.toString());
         SessionHandler sessionHandler = SessionHandler.getInstance();
         Session session = sessionHandler.getSessionFactory().openSession();
 
@@ -33,8 +35,8 @@ public class AccountController extends Controller {
         session.save(account);
         session.getTransaction().commit();
 
+        session.close();
         JsonNode response = Json.toJson(account);
-
 
         return ok(response.asText());
     }

@@ -208,6 +208,7 @@ public class ProfileController extends Controller {
 
         JsonNode newProfile = Json.toJson(profile);
         System.out.println(newProfile.toString());
+        session.close();
         return ok(newProfile.toString());
     }
 
