@@ -13,6 +13,7 @@ public class Parentsof {
     private int timedentityid;
     private int childid;
     private int parentsid;
+    private int parentType;
 
     @Id
     @Column(name = "timedentityid")
@@ -38,6 +39,16 @@ public class Parentsof {
     @Column(name = "parentsid")
     public int getParentsid() {
         return parentsid;
+    }
+
+    @Basic
+    @Column(name = "parentType")
+    public int getParentType() {
+        return parentType;
+    }
+
+    public void setParentType(int parentType) {
+        this.parentType = parentType;
     }
 
     public void setParentsid(int parentsid) {

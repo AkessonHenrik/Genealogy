@@ -11,6 +11,7 @@ import play.mvc.Result;
 import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ProfileController extends Controller {
@@ -25,7 +26,7 @@ public class ProfileController extends Controller {
 
         String birthDay = jsonNode.get("birthDay").asText();
         String deathDay = "";
-        if(jsonNode.has("deathDay")) {
+        if (jsonNode.has("deathDay")) {
             deathDay = jsonNode.get("deathDay").asText();
         }
 
@@ -304,5 +305,50 @@ public class ProfileController extends Controller {
         return location.getId();
     }
 
+    @Transactional
+    public Result addGhost() {
+        JsonNode jsonNode = request().body().asJson();
+        int ownerId = jsonNode.get("ownerId").asInt();
+        int ghostId = jsonNode.get("profileId").asInt();
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        session.getTransaction().begin();
+
+        Ghost ghost = new Ghost();
+        ghost.setOwner(ownerId);
+        ghost.setProfileid(ghostId);
+        session.save(ghost);
+        session.getTransaction().commit();
+        session.close();
+        return ok(Json.toJson(ghost));
+    }
+
+
+    @Transactional
+    public Result getOwnedProfiles(Integer id) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        String query = "select profileid from Ghost where owner = " + id;
+
+
+        List<Integer> ghosts = session.createQuery(query).list();
+        List<SearchResult> results = new ArrayList<>();
+        for (Integer ghostId : ghosts) {
+            query = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + ghostId;
+            List<Object[]> result = session.createQuery(query).list();
+            SearchResult caller;
+            for (Object[] resultObj : result) {
+                int resid = (int) resultObj[0];
+                String resfirstname = (String) resultObj[1];
+                String reslastname = (String) resultObj[2];
+                String resPath = (String) resultObj[3];
+                int resGender = (int) resultObj[4];
+                caller = new SearchResult(resid, resfirstname, reslastname, resPath, resGender);
+                results.add(caller);
+            }
+        }
+
+        session.close();
+        return ok(Json.toJson(results));
+    }
 
 }
