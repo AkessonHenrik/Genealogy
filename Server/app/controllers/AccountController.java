@@ -2,11 +2,14 @@ package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import models.Account;
+import org.hibernate.Query;
 import org.hibernate.Session;
 import play.db.jpa.Transactional;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
+
+import java.util.List;
 
 /**
  * Created by Henrik on 18/06/2017.
@@ -39,6 +42,29 @@ public class AccountController extends Controller {
 
         System.out.println(response.asText());
         return ok(response);
+    }
+
+    @Transactional
+    public Result login() {
+        JsonNode json = request().body().asJson();
+        System.out.println(json.toString());
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        String queryString = "from Account where email = :emailParam";
+        Query query = session.createQuery(queryString);
+        query.setParameter("emailParam", json.get("email").asText());
+        try {
+            Account result = (Account) query.list().get(0);
+            session.close();
+            if (result.getPassword().equals(json.get("password").asText())) {
+                result.setPassword("");
+                JsonNode resultJson = Json.toJson(result);
+                return ok(resultJson);
+            } else {
+                return badRequest("Wrong password");
+            }
+        } catch (Exception e) {
+            return notFound();
+        }
     }
 
 }

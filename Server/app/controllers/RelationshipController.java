@@ -162,22 +162,7 @@ public class RelationshipController extends Controller {
         for (Integer otherId : otherIds) {
             String otherquery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + otherId;
             List<Object[]> otherresult = session.createQuery(otherquery).list();
-            for (Object[] resultObj : otherresult) {
-                int resid = (int) resultObj[0];
-                String resfirstname = (String) resultObj[1];
-                String reslastname = (String) resultObj[2];
-                String resPath = (String) resultObj[3];
-                int resGender = (int) resultObj[4];
-                boolean alreadyIn = false;
-                for (SearchResult i : results) {
-                    if (i.id == resid) {
-                        alreadyIn = true;
-                    }
-                }
-                if (!alreadyIn) {
-                    results.add(new SearchResult(resid, resfirstname, reslastname, resPath, resGender));
-                }
-            }
+            createSearchResultPersonFromQueryResult(otherresult, results);
         }
         results.add(caller);
 
@@ -287,46 +272,12 @@ public class RelationshipController extends Controller {
                 String childrenRelQuery = "from Parentsof where parentsid = " + resId;
                 List <Parentsof> theirChildren = session.createQuery(childrenRelQuery).list();
                 parents.addAll(theirChildren);
-                for(Parentsof theirChild: theirChildren) {
-                    String childrenQuery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Parentsof as pr on p.peopleentityid = pr.childid inner join Media as m on m.postid = p.profilepicture where pr.childid = " + theirChild.getChildid();
-                    List<Object[]> kids = session.createQuery(childrenQuery).list();
-                    for (Object[] resultObj : kids) {
-                        int resid = (int) resultObj[0];
-                        String resfirstname = (String) resultObj[1];
-                        String reslastname = (String) resultObj[2];
-                        String resPath = (String) resultObj[3];
-                        int resGender = (int) resultObj[4];
-                        boolean alreadyIn2 = false;
-                        for (SearchResult par : results) {
-                            if (par.id == resid) {
-                                alreadyIn2 = true;
-                            }
-                        }
-                        if (!alreadyIn2) {
-                            results.add(new SearchResult(resid, resfirstname, reslastname, resPath, resGender));
-                        }
-                    }
-                }
+                results.addAll(getPeopleFromParents(theirChildren, session));
             }
             for (Integer otherId : otherParentIds) {
                 String otherquery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + otherId;
                 List<Object[]> otherresult = session.createQuery(otherquery).list();
-                for (Object[] resultObj : otherresult) {
-                    int resid = (int) resultObj[0];
-                    String resfirstname = (String) resultObj[1];
-                    String reslastname = (String) resultObj[2];
-                    String resPath = (String) resultObj[3];
-                    int resGender = (int) resultObj[4];
-                    boolean alreadyIn = false;
-                    for (SearchResult par : results) {
-                        if (par.id == resid) {
-                            alreadyIn = true;
-                        }
-                    }
-                    if (!alreadyIn) {
-                        results.add(new SearchResult(resid, resfirstname, reslastname, resPath, resGender));
-                    }
-                }
+                createSearchResultPersonFromQueryResult(otherresult, results);
             }
             results.add(caller);
         }
@@ -347,6 +298,34 @@ public class RelationshipController extends Controller {
         return ok(Json.toJson(fr).toString());
     }
 
+
+    List<SearchResult> getPeopleFromParents(List<Parentsof> parents, Session session) {
+        List<SearchResult> results = new ArrayList<>();
+        for(Parentsof theirChild: parents) {
+            String childrenQuery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Parentsof as pr on p.peopleentityid = pr.childid inner join Media as m on m.postid = p.profilepicture where pr.childid = " + theirChild.getChildid();
+            List<Object[]> kids = session.createQuery(childrenQuery).list();
+            createSearchResultPersonFromQueryResult(kids, results);
+        }
+        return results;
+    }
+    void createSearchResultPersonFromQueryResult(List<Object[]> kids, List<SearchResult> results) {
+        for (Object[] resultObj : kids) {
+            int resid = (int) resultObj[0];
+            String resfirstname = (String) resultObj[1];
+            String reslastname = (String) resultObj[2];
+            String resPath = (String) resultObj[3];
+            int resGender = (int) resultObj[4];
+            boolean alreadyIn = false;
+            for (SearchResult par : results) {
+                if (par.id == resid) {
+                    alreadyIn = true;
+                }
+            }
+            if (!alreadyIn) {
+                results.add(new SearchResult(resid, resfirstname, reslastname, resPath, resGender));
+            }
+        }
+    }
 }
 
 class SearchResult {
