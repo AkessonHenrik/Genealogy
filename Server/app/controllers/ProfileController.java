@@ -3,11 +3,18 @@ package controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import models.*;
 import org.hibernate.Session;
+import play.api.mvc.MultipartFormData;
 import play.db.jpa.Transactional;
 import play.libs.Json;
+import play.mvc.BodyParser;
 import play.mvc.Controller;
+import play.mvc.Http;
 import play.mvc.Result;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -200,6 +207,7 @@ public class ProfileController extends Controller {
         profilePictureMedia.setPostid(profilePicturePost.getTimedentityid());
         profilePictureMedia.setType(0);
         profilePictureMedia.setPath(profilePicturePath);
+        System.out.println("HEYYYY: " + profilePicturePath);
         session.save(profilePictureMedia);
 
         profile.setProfilepicture(profilePictureMedia.getPostid());
@@ -349,6 +357,25 @@ public class ProfileController extends Controller {
 
         session.close();
         return ok(Json.toJson(results));
+    }
+
+    //@BodyParser.Of(value = BodyParser.Text.class, maxLength = 10 * 1024)
+    public Result upload() {
+        Http.MultipartFormData body = request().body().asMultipartFormData();
+        Http.MultipartFormData.FilePart picture = body.getFile("picture");
+        if (picture != null) {
+            String fileName = picture.getFilename();
+            String contentType = picture.getContentType();
+            File file = picture.getFile();
+            String filename = String.valueOf(Math.abs(file.hashCode())) + ".jpg";
+            File definiteFile = new File("public/" + filename);
+            file.renameTo(definiteFile);
+            System.out.println(filename);
+            JsonNode responseJson = Json.toJson(definiteFile.getName());
+            return ok(responseJson);
+        } else {
+            return badRequest();
+        }
     }
 
 }
