@@ -2,21 +2,19 @@ package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import models.*;
-import org.hibernate.Query;
 import org.hibernate.Session;
 import play.db.jpa.Transactional;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
+import returnTypes.RelationshipSearchResult;
+import returnTypes.SearchResult;
 
-import java.io.Serializable;
 import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Created by Henrik on 19/06/2017.
@@ -162,7 +160,7 @@ public class RelationshipController extends Controller {
         for (Integer otherId : otherIds) {
             String otherquery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + otherId;
             List<Object[]> otherresult = session.createQuery(otherquery).list();
-            createSearchResultPersonFromQueryResult(otherresult, results);
+            results.addAll(SearchResult.createSearchResultPersonFromQueryResult(otherresult));
         }
         results.add(caller);
 
@@ -270,21 +268,21 @@ public class RelationshipController extends Controller {
                     relationships.add(toAdd);
                 // Get their other children
                 String childrenRelQuery = "from Parentsof where parentsid = " + resId;
-                List <Parentsof> theirChildren = session.createQuery(childrenRelQuery).list();
+                List<Parentsof> theirChildren = session.createQuery(childrenRelQuery).list();
                 parents.addAll(theirChildren);
                 results.addAll(getPeopleFromParents(theirChildren, session));
             }
             for (Integer otherId : otherParentIds) {
                 String otherquery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + otherId;
                 List<Object[]> otherresult = session.createQuery(otherquery).list();
-                createSearchResultPersonFromQueryResult(otherresult, results);
+                results.addAll(SearchResult.createSearchResultPersonFromQueryResult(otherresult));
             }
             results.add(caller);
         }
 
         // Add parent's other children
         System.out.println("KIDS");
-        for(Parentsof parent: parents) {
+        for (Parentsof parent : parents) {
             System.out.println(parent.getChildid());
         }
         System.out.println("END KIDS");
@@ -301,91 +299,14 @@ public class RelationshipController extends Controller {
 
     List<SearchResult> getPeopleFromParents(List<Parentsof> parents, Session session) {
         List<SearchResult> results = new ArrayList<>();
-        for(Parentsof theirChild: parents) {
+        for (Parentsof theirChild : parents) {
             String childrenQuery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Parentsof as pr on p.peopleentityid = pr.childid inner join Media as m on m.postid = p.profilepicture where pr.childid = " + theirChild.getChildid();
             List<Object[]> kids = session.createQuery(childrenQuery).list();
-            createSearchResultPersonFromQueryResult(kids, results);
+            results.addAll(SearchResult.createSearchResultPersonFromQueryResult(kids));
         }
         return results;
     }
-    void createSearchResultPersonFromQueryResult(List<Object[]> kids, List<SearchResult> results) {
-        for (Object[] resultObj : kids) {
-            int resid = (int) resultObj[0];
-            String resfirstname = (String) resultObj[1];
-            String reslastname = (String) resultObj[2];
-            String resPath = (String) resultObj[3];
-            int resGender = (int) resultObj[4];
-            boolean alreadyIn = false;
-            for (SearchResult par : results) {
-                if (par.id == resid) {
-                    alreadyIn = true;
-                }
-            }
-            if (!alreadyIn) {
-                results.add(new SearchResult(resid, resfirstname, reslastname, resPath, resGender));
-            }
-        }
-    }
-}
 
-class SearchResult {
-    public int id;
-    public String firstname;
-    public String lastname;
-    public String image;
-    public int gender;
-
-    SearchResult(int id, String firstname, String lastname, String profilePicture, int gender) {
-        this.id = id;
-        this.firstname = firstname;
-        this.lastname = lastname;
-        this.image = profilePicture;
-        this.gender = gender;
-    }
-
-    @Override
-    public String toString() {
-        return "SearchResult{" +
-                "id=" + id +
-                ", firstname='" + firstname + '\'' +
-                ", lastname='" + lastname + '\'' +
-                ", profilePicture='" + image + '\'' +
-                ", gender: '" + gender + "'\'" +
-                '}';
-    }
-}
-
-class RelationshipSearchResult {
-    public int id;
-    public int profile1;
-    public int profile2;
-    public int type;
-    public Date time;
-    public Date begintime;
-    public Date endtime;
-
-    public RelationshipSearchResult(int id, int profile1, int profile2, int type, Date time, Date begintime, Date endtime) {
-        this.id = id;
-        this.profile1 = profile1;
-        this.profile2 = profile2;
-        this.type = type;
-        this.time = time;
-        this.begintime = begintime;
-        this.endtime = endtime;
-    }
-
-    @Override
-    public String toString() {
-        return "RelationshipSearchResult{" +
-                "id=" + id +
-                ", profile1=" + profile1 +
-                ", profile2=" + profile2 +
-                ", type='" + type + '\'' +
-                ", time=" + time +
-                ", begintime=" + begintime +
-                ", endtime=" + endtime +
-                '}';
-    }
 }
 
 class FinalResult {
