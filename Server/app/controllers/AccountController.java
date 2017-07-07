@@ -8,8 +8,7 @@ import play.db.jpa.Transactional;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
-
-import java.util.List;
+import utils.SessionHandler;
 
 /**
  * Created by Henrik on 18/06/2017.

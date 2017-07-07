@@ -1,7 +1,5 @@
 package returnTypes;
 
-import models.Locatedevent;
-
 import java.util.List;
 
 public class FullProfile {

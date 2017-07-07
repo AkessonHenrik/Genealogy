@@ -7,8 +7,10 @@ import play.db.jpa.Transactional;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
+import returnTypes.FinalResult;
 import returnTypes.RelationshipSearchResult;
 import returnTypes.SearchResult;
+import utils.SessionHandler;
 
 import java.sql.Date;
 import java.text.ParseException;
@@ -309,8 +311,3 @@ public class RelationshipController extends Controller {
 
 }
 
-class FinalResult {
-    public List<RelationshipSearchResult> relationships;
-    public List<SearchResult> people;
-    public List<Parentsof> parents;
-}
