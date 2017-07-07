@@ -591,11 +591,13 @@ public class ProfileController extends Controller {
                 }
             }
         }
+
+
+        LocatedEventResult diedEventResult = null;
         if (p.getDied() != null) {
             query = session.createQuery("from Locatedevent where eventid = :eventId");
-            query.setParameter("eventId", p.getBorn());
+            query.setParameter("eventId", p.getDied());
             Locatedevent died = null;
-            LocatedEventResult diedEventResult = null;
             try {
                 died = (Locatedevent) query.list().get(0);
             } catch (Exception e) {
@@ -615,8 +617,9 @@ public class ProfileController extends Controller {
                         "inner join Province pr on pr.id = cp.provinceid " +
                         "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
-
-                diedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), times.get(0));
+                Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", diedEvent.getPostid()).list().get(0);
+                Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
+                diedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), new String[]{time.getTime().toString()});
                 System.out.println(Json.toJson(diedEventResult));
                 for (EventResult er : eventResults) {
                     if (er.id == diedEventResult.id) {
@@ -628,6 +631,7 @@ public class ProfileController extends Controller {
         }
         FullProfile fullProfile = new FullProfile(profile, eventResults);
         fullProfile.born = bornEventResult;
+        fullProfile.died = diedEventResult;
         session.close();
         return ok(Json.toJson(fullProfile));
     }
