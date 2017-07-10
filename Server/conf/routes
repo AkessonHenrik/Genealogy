@@ -3,10 +3,6 @@
 # ~~~~
 
 # Home page
-POST        /location             @controllers.Application.createLocation
-
-GET         /location             @controllers.Application.getLocations
-
 POST        /signup               @controllers.AccountController.addAccount
 
 POST        /auth                 @controllers.AccountController.login
