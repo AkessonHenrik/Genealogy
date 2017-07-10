@@ -11,6 +11,7 @@ import play.mvc.Http;
 import play.mvc.Result;
 import returnTypes.*;
 import utils.SessionHandler;
+import utils.Util;
 
 import java.io.File;
 import java.sql.Date;
@@ -96,7 +97,7 @@ public class ProfileController extends Controller {
         bornEvent.setDescription(bornDescription);
         session.save(bornEvent);
         // Born location
-        int bornLocationId = this.createLocation(session, bornCity, bornProvince, bornCountry);
+        int bornLocationId = Util.createLocation(session, bornCity, bornProvince, bornCountry);
 
         // Lastly, born LocatedEvent
         Locatedevent bornLocatedEvent = new Locatedevent();
@@ -154,7 +155,7 @@ public class ProfileController extends Controller {
             session.save(diedEvent);
 
             // Born location
-            int diedLocationId = this.createLocation(session, diedCity, diedProvince, diedCountry);
+            int diedLocationId = Util.createLocation(session, diedCity, diedProvince, diedCountry);
 
             Locatedevent diedLocatedEvent = new Locatedevent();
             diedLocatedEvent.setLocationid(diedLocationId);
@@ -248,98 +249,6 @@ public class ProfileController extends Controller {
 
         session.close();
         return ok(newProfile.toString());
-    }
-
-    int createLocation(Session session, String cityName, String provinceName, String countryName) {
-        City city = null;
-
-
-        List<City> cities = (List<City>) session.createQuery("FROM City").list();
-        for (City c : cities) {
-            System.out.println(c.getName());
-            if (c.getName().equals(cityName)) {
-                city = c;
-            }
-        }
-        if (city == null) {
-            city = new City();
-            city.setName(cityName);
-            session.save(city);
-        }
-
-        Province province = null;
-
-        List<Province> provinces = session.createQuery("from Province").list();
-        for (Province p : provinces) {
-            if (p.getName().equals(provinceName)) {
-                province = p;
-            }
-        }
-        if (province == null) {
-            province = new Province();
-            province.setName(provinceName);
-            session.save(province);
-        }
-
-        Country country = null;
-
-        List<Country> countries = session.createQuery("from Country").list();
-        for (Country c : countries) {
-            if (c.getName().equals(countryName)) {
-                country = c;
-            }
-        }
-        if (country == null) {
-            country = new Country();
-            country.setName(countryName);
-            session.save(country);
-        }
-
-        Cityprovince cityprovince = null;
-        List<Cityprovince> cityprovinces = session.createQuery("from Cityprovince ").list();
-        for (Cityprovince cp : cityprovinces) {
-            if (cp.getCityid() == city.getId() && cp.getProvinceid() == province.getId()) {
-                cityprovince = cp;
-            }
-        }
-        if (cityprovince == null) {
-            cityprovince = new Cityprovince();
-            cityprovince.setProvinceid(province.getId());
-            cityprovince.setCityid(city.getId());
-            session.save(cityprovince);
-        }
-
-
-        Provincecountry provinceCountry = null;
-
-        List<Provincecountry> provincecountries = session.createQuery("from Provincecountry ").list();
-
-        for (Provincecountry pc : provincecountries) {
-            if (pc.getCountryid() == country.getId() && pc.getProvinceid() == province.getId()) {
-                provinceCountry = pc;
-            }
-        }
-        if (provinceCountry == null) {
-            provinceCountry = new Provincecountry();
-            provinceCountry.setProvinceid(province.getId());
-            provinceCountry.setCountryid(country.getId());
-            session.save(provinceCountry);
-        }
-
-        Location location = null;
-        List<Location> locations = session.createQuery("from Location").list();
-        for (Location l : locations) {
-            if (l.getCityprovinceid() == cityprovince.getId() && l.getProvincecountryid() == provinceCountry.getId()) {
-                location = l;
-            }
-        }
-        if (location == null) {
-            location = new Location();
-            location.setProvincecountryid(provinceCountry.getId());
-            location.setCityprovinceid(cityprovince.getId());
-            session.save(location);
-        }
-        return location.getId();
     }
 
     @Transactional
@@ -442,6 +351,18 @@ public class ProfileController extends Controller {
             }
         }
 
+        List<Event> events = new ArrayList<>();
+        List<Media> media = new ArrayList<>();
+        for (Post post : posts) {
+            query = session.createQuery("from Event where postid = " + post.getTimedentityid());
+            events.addAll(query.list());
+            List<Eventmedia> eventmedia = session.createQuery("from Eventmedia where eventid = :eventid").setParameter("eventid", post.getTimedentityid()).list();
+            for (Eventmedia em : eventmedia) {
+                query = session.createQuery("from Media where postid = " + em.getMediaid());
+                media.addAll(query.list());
+            }
+
+        }
 
         query = session.createQuery("from Locatedevent where eventid = :eventId");
         query.setParameter("eventId", p.getBorn());
@@ -469,7 +390,7 @@ public class ProfileController extends Controller {
             Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", bornEvent.getPostid()).list().get(0);
             Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
 
-            bornEventResult = new LocatedEventResult(bornEvent.getPostid(), locationResult, bornEvent.getName(), bornEvent.getDescription(), new String[]{time.getTime().toString()});
+            bornEventResult = new LocatedEventResult(bornEvent.getPostid(), locationResult, bornEvent.getName(), bornEvent.getDescription(), new String[]{time.getTime().toString()}, media);
             System.out.println(Json.toJson(bornEventResult));
             for (EventResult er : eventResults) {
                 if (er.id == bornEventResult.id) {
@@ -478,7 +399,6 @@ public class ProfileController extends Controller {
                 }
             }
         }
-
 
         LocatedEventResult diedEventResult = null;
         if (p.getDied() != null) {
@@ -506,7 +426,7 @@ public class ProfileController extends Controller {
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
                 Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", diedEvent.getPostid()).list().get(0);
                 Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
-                diedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), new String[]{time.getTime().toString()});
+                diedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), new String[]{time.getTime().toString()}, media);
                 System.out.println(Json.toJson(diedEventResult));
                 for (EventResult er : eventResults) {
                     if (er.id == diedEventResult.id) {
@@ -515,15 +435,6 @@ public class ProfileController extends Controller {
                     }
                 }
             }
-        }
-
-        List<Event> events = new ArrayList<>();
-        List<Media> media = new ArrayList<>();
-        for (Post post : posts) {
-            query = session.createQuery("from Event where postid = " + post.getTimedentityid());
-            events.addAll(query.list());
-            query = session.createQuery("from Media where postid = " + post.getTimedentityid());
-            media.addAll(query.list());
         }
 
         ArrayList<String[]> times = new ArrayList<>();
@@ -537,7 +448,6 @@ public class ProfileController extends Controller {
                     break;
                 }
             }
-            System.out.println(teId);
             query = session.createQuery("from Singletime where timeid = :timeid");
             query.setParameter("timeid", teId);
             for (Singletime st : (List<Singletime>) query.list()) {
@@ -573,9 +483,9 @@ public class ProfileController extends Controller {
                         "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
-                LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i));
+                LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), media);
                 System.out.println(Json.toJson(locatedEventResult));
-                if (locatedEventResult.id != bornEventResult.id && locatedEventResult.id != diedEventResult.id) {
+                if (locatedEventResult.id != bornEventResult.id) {
                     eventResults.add(locatedEventResult);
                 }
             }
@@ -604,7 +514,7 @@ public class ProfileController extends Controller {
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
                 Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
-                WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times.get(i));
+                WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times.get(i), media);
                 System.out.println(Json.toJson(workEventResult));
                 eventResults.add(workEventResult);
             }
@@ -632,15 +542,14 @@ public class ProfileController extends Controller {
                         "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
-                MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i));
+                MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), media);
                 System.out.println(Json.toJson(moveEventResult));
                 eventResults.add(moveEventResult);
             }
 
-
             // "Normal" event
-            if(!subEvent) {
-                EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), times.get(i));
+            if (!subEvent) {
+                EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), times.get(i), media);
                 eventResults.add(eventResult);
             }
             i++;
