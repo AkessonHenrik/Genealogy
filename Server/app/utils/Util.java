@@ -5,18 +5,11 @@ import org.hibernate.Session;
 
 import java.util.List;
 
-/**
- * Created by Henrik on 07/07/2017.
- */
 public class Util {
     public static int createLocation(Session session, String cityName, String provinceName, String countryName) {
         City city = null;
-        System.out.println("==================================================");
-        System.out.println(cityName + ", " + provinceName + ", " + countryName);
-        System.out.println("==================================================");
         List<City> cities = (List<City>) session.createQuery("FROM City").list();
         for (City c : cities) {
-            System.out.println(c.getName());
             if (c.getName().equals(cityName)) {
                 city = c;
             }

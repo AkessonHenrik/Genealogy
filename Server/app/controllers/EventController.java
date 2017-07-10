@@ -31,11 +31,8 @@ public class EventController {
          * Need:
          * name, description, time (st or ti), media, owner id, visibility
          */
-
         String name = jsonNode.get("name").asText();
-        System.out.println(name);
         String description = jsonNode.get("description").asText();
-        System.out.println(description);
         int ownerId = jsonNode.get("owner").asInt();
         boolean timeInterval = false;
         String begin = jsonNode.get("time").get(0).asText();
@@ -103,7 +100,6 @@ public class EventController {
             mediaUrls.add(jsonNode.get("media").get(i).get("path").asText());
         }
         for (String mediaUrl : mediaUrls) {
-
             Timedentity mediaTimedEntity = new Timedentity();
             mediaTimedEntity.setTimeid(time.getId());
             session.save(mediaTimedEntity);
@@ -124,11 +120,8 @@ public class EventController {
             session.save(media);
 
             Eventmedia eventmedia = new Eventmedia();
-            eventmedia.setEventid(timedentity.getId());
+            eventmedia.setEventid(event.getPostid());
             eventmedia.setMediaid(media.getPostid());
-            System.out.println("OIJOIJOIJOIJOIJOIJOIJOIJOIJ");
-            System.out.println(Json.toJson(eventmedia));
-            System.out.println("OIJOIJOIJOIJOIJOIJOIJOIJOIJ");
             session.save(eventmedia);
         }
 

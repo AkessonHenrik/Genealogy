@@ -54,7 +54,7 @@ public class ProfileController extends Controller {
         String bornCity = bornLocationNode.get("city").asText();
         String bornProvince = bornLocationNode.get("province").asText();
         String bornCountry = bornLocationNode.get("country").asText();
-        JsonNode bornMedia = bornNode.get("media");
+//        JsonNode bornMedia = bornNode.get("media");
 
 
         // Create Time for birth
@@ -89,8 +89,7 @@ public class ProfileController extends Controller {
         bornPost.setTimedentityid(bornTimedEntity.getId());
         session.save(bornPost);
 
-
-        // Third, born Event
+        // Fourth, born Event
         Event bornEvent = new Event();
         bornEvent.setPostid(bornPost.getTimedentityid());
         bornEvent.setName(bornName);
@@ -268,7 +267,6 @@ public class ProfileController extends Controller {
         return ok(Json.toJson(ghost));
     }
 
-
     @Transactional
     public Result getOwnedProfiles(Integer id) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
@@ -297,20 +295,18 @@ public class ProfileController extends Controller {
         return ok(Json.toJson(results));
     }
 
-    //@BodyParser.Of(value = BodyParser.Text.class, maxLength = 10 * 1024)
     public Result upload() {
         Http.MultipartFormData body = request().body().asMultipartFormData();
         Http.MultipartFormData.FilePart picture = body.getFile("picture");
         if (picture != null) {
-            String fileName = picture.getFilename();
-            String contentType = picture.getContentType();
             File file = picture.getFile();
             String filename = String.valueOf(Math.abs(file.hashCode())) + ".jpg";
             File definiteFile = new File("public/" + filename);
-            file.renameTo(definiteFile);
-            System.out.println(filename);
-            JsonNode responseJson = Json.toJson(definiteFile.getName());
-            return ok(responseJson);
+            if (file.renameTo(definiteFile)) {
+                return ok(Json.toJson(definiteFile.getName()));
+            } else {
+                return internalServerError();
+            }
         } else {
             return badRequest();
         }
@@ -320,7 +316,6 @@ public class ProfileController extends Controller {
     public Result getProfile(Integer id) {
 
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-
         // Get profile SearchResult and model
         Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id).list().get(0);
         String queryString = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id;
@@ -345,33 +340,19 @@ public class ProfileController extends Controller {
         List<Post> posts = new ArrayList<>();
         for (Timedentity timedentity : eventsTE) {
             query = session.createQuery("from Post where timedentityid = " + timedentity.getId());
-            try {
-                posts.addAll(query.list());
-            } catch (Exception e) {
-            }
+            posts.addAll(query.list());
         }
 
         List<Event> events = new ArrayList<>();
-        List<Media> media = new ArrayList<>();
         for (Post post : posts) {
-            query = session.createQuery("from Event where postid = " + post.getTimedentityid());
+            query = session.createQuery("from Event where postid = :postid").setParameter("postid", post.getTimedentityid());
             events.addAll(query.list());
-            List<Eventmedia> eventmedia = session.createQuery("from Eventmedia where eventid = :eventid").setParameter("eventid", post.getTimedentityid()).list();
-            for (Eventmedia em : eventmedia) {
-                query = session.createQuery("from Media where postid = " + em.getMediaid());
-                media.addAll(query.list());
-            }
-
         }
-
         query = session.createQuery("from Locatedevent where eventid = :eventId");
         query.setParameter("eventId", p.getBorn());
-        Locatedevent born = null;
+        Locatedevent born;
         LocatedEventResult bornEventResult = null;
-        try {
-            born = (Locatedevent) query.list().get(0);
-        } catch (Exception e) {
-        }
+        born = (Locatedevent) query.list().get(0);
         if (born != null) {
             // Get event
             Event bornEvent = (Event) session.createQuery("from Event where postid = " + born.getEventid()).list().get(0);
@@ -390,8 +371,7 @@ public class ProfileController extends Controller {
             Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", bornEvent.getPostid()).list().get(0);
             Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
 
-            bornEventResult = new LocatedEventResult(bornEvent.getPostid(), locationResult, bornEvent.getName(), bornEvent.getDescription(), new String[]{time.getTime().toString()}, media);
-            System.out.println(Json.toJson(bornEventResult));
+            bornEventResult = new LocatedEventResult(bornEvent.getPostid(), locationResult, bornEvent.getName(), bornEvent.getDescription(), new String[]{time.getTime().toString()}, getEventMedia(session, bornEvent.getPostid()));
             for (EventResult er : eventResults) {
                 if (er.id == bornEventResult.id) {
                     eventResults.remove(er);
@@ -404,11 +384,8 @@ public class ProfileController extends Controller {
         if (p.getDied() != null) {
             query = session.createQuery("from Locatedevent where eventid = :eventId");
             query.setParameter("eventId", p.getDied());
-            Locatedevent died = null;
-            try {
-                died = (Locatedevent) query.list().get(0);
-            } catch (Exception e) {
-            }
+            Locatedevent died;
+            died = (Locatedevent) query.list().get(0);
             if (died != null) {
                 // Get event
                 Event diedEvent = (Event) session.createQuery("from Event where postid = " + died.getEventid()).list().get(0);
@@ -422,11 +399,11 @@ public class ProfileController extends Controller {
                         "inner join Provincecountry pc on pc.id = l.provincecountryid " +
                         "inner join City ci on ci.id = cp.cityid " +
                         "inner join Province pr on pr.id = cp.provinceid " +
-                        "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
+                        "inner join Country co on co.id = pc.countryid where l.id = :locationid").setParameter("locationid", location.getId()).list();
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
                 Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", diedEvent.getPostid()).list().get(0);
                 Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
-                diedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), new String[]{time.getTime().toString()}, media);
+                diedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), new String[]{time.getTime().toString()}, getEventMedia(session, diedEvent.getPostid()));
                 System.out.println(Json.toJson(diedEventResult));
                 for (EventResult er : eventResults) {
                     if (er.id == diedEventResult.id) {
@@ -464,9 +441,8 @@ public class ProfileController extends Controller {
             query = session.createQuery("from Locatedevent where eventid = :eventId");
             query.setParameter("eventId", event.getPostid());
             Locatedevent locatedevent = null;
-            try {
+            if (query.list().size() > 0) {
                 locatedevent = (Locatedevent) query.list().get(0);
-            } catch (Exception e) {
             }
             if (locatedevent != null) {
                 subEvent = true;
@@ -483,73 +459,75 @@ public class ProfileController extends Controller {
                         "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
-                LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), media);
+                LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
                 System.out.println(Json.toJson(locatedEventResult));
                 if (locatedEventResult.id != bornEventResult.id) {
-                    eventResults.add(locatedEventResult);
+                    if (diedEventResult == null || diedEventResult.id != locatedEventResult.id) {
+                        eventResults.add(locatedEventResult);
+                    }
                 }
             }
 
-            // Work event?
-            query = session.createQuery("from Workevent where eventid = :eventId");
-            query.setParameter("eventId", event.getPostid());
-            Workevent workevent = null;
-            try {
-                workevent = (Workevent) query.list().get(0);
-            } catch (Exception e) {
-            }
-            if (workevent != null) {
-                subEvent = true;
-                // Get locations
-                query = session.createQuery("from Location where id = " + workevent.getLocationid());
-                Location location = (Location) query.list().get(0);
-                List<Object[]> attrs = session.createQuery("select ci.name, " +
-                        "pr.name, " +
-                        "co.name from Location l " +
-                        "inner join Cityprovince cp on l.cityprovinceid = cp.id " +
-                        "inner join Provincecountry pc on pc.id = l.provincecountryid " +
-                        "inner join City ci on ci.id = cp.cityid " +
-                        "inner join Province pr on pr.id = cp.provinceid " +
-                        "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
-                LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
+            if (!subEvent) {
+                // Work event?
+                query = session.createQuery("from Workevent where eventid = :eventId");
+                query.setParameter("eventId", event.getPostid());
+                Workevent workevent = null;
+                if (query.list().size() > 0) {
+                    workevent = (Workevent) query.list().get(0);
+                }
+                if (workevent != null) {
+                    subEvent = true;
+                    // Get locations
+                    query = session.createQuery("from Location where id = " + workevent.getLocationid());
+                    Location location = (Location) query.list().get(0);
+                    List<Object[]> attrs = session.createQuery("select ci.name, " +
+                            "pr.name, " +
+                            "co.name from Location l " +
+                            "inner join Cityprovince cp on l.cityprovinceid = cp.id " +
+                            "inner join Provincecountry pc on pc.id = l.provincecountryid " +
+                            "inner join City ci on ci.id = cp.cityid " +
+                            "inner join Province pr on pr.id = cp.provinceid " +
+                            "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
+                    LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
-                Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
-                WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times.get(i), media);
-                System.out.println(Json.toJson(workEventResult));
-                eventResults.add(workEventResult);
-            }
+                    Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
+                    WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, workevent.getEventid()));
+                    System.out.println(Json.toJson(workEventResult));
+                    eventResults.add(workEventResult);
+                }
+                if (!subEvent) {
+                    // Move event?
+                    query = session.createQuery("from Moveevent where eventid = :eventId");
+                    query.setParameter("eventId", event.getPostid());
+                    Moveevent moveevent = null;
+                    if (query.list().size() > 0) {
+                        moveevent = (Moveevent) query.list().get(0);
+                    }
+                    if (moveevent != null) {
+                        subEvent = true;
+                        // Get locations
+                        query = session.createQuery("from Location where id = " + moveevent.getLocationid());
+                        Location location = (Location) query.list().get(0);
+                        List<Object[]> attrs = session.createQuery("select ci.name, " +
+                                "pr.name, " +
+                                "co.name from Location l " +
+                                "inner join Cityprovince cp on l.cityprovinceid = cp.id " +
+                                "inner join Provincecountry pc on pc.id = l.provincecountryid " +
+                                "inner join City ci on ci.id = cp.cityid " +
+                                "inner join Province pr on pr.id = cp.provinceid " +
+                                "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
+                        LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
-            // Move event?
-            query = session.createQuery("from Moveevent where eventid = :eventId");
-            query.setParameter("eventId", event.getPostid());
-            Moveevent moveevent = null;
-            try {
-                moveevent = (Moveevent) query.list().get(0);
-            } catch (Exception e) {
+                        MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
+                        System.out.println(Json.toJson(moveEventResult));
+                        eventResults.add(moveEventResult);
+                    }
+                }
             }
-            if (moveevent != null) {
-                subEvent = true;
-                // Get locations
-                query = session.createQuery("from Location where id = " + moveevent.getLocationid());
-                Location location = (Location) query.list().get(0);
-                List<Object[]> attrs = session.createQuery("select ci.name, " +
-                        "pr.name, " +
-                        "co.name from Location l " +
-                        "inner join Cityprovince cp on l.cityprovinceid = cp.id " +
-                        "inner join Provincecountry pc on pc.id = l.provincecountryid " +
-                        "inner join City ci on ci.id = cp.cityid " +
-                        "inner join Province pr on pr.id = cp.provinceid " +
-                        "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
-                LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
-
-                MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), media);
-                System.out.println(Json.toJson(moveEventResult));
-                eventResults.add(moveEventResult);
-            }
-
             // "Normal" event
             if (!subEvent) {
-                EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), times.get(i), media);
+                EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
                 eventResults.add(eventResult);
             }
             i++;
@@ -561,5 +539,15 @@ public class ProfileController extends Controller {
         fullProfile.died = diedEventResult;
         session.close();
         return ok(Json.toJson(fullProfile));
+    }
+
+    private List<Media> getEventMedia(Session session, int eventId) {
+        List<Eventmedia> em = session.createQuery("from Eventmedia where eventid = " + eventId).list();
+
+        List<Media> mediaList = new ArrayList<>();
+        for (Eventmedia eventmedia : em) {
+            mediaList.addAll(session.createQuery("from Media where postid = " + eventmedia.getMediaid()).list());
+        }
+        return mediaList;
     }
 }
