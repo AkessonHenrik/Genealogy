@@ -9,7 +9,6 @@ public class SearchResult {
     public String lastname;
     public String image;
     public int gender;
-
     public SearchResult(int id, String firstname, String lastname, String profilePicture, int gender) {
         this.id = id;
         this.firstname = firstname;

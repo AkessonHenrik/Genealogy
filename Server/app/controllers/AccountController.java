@@ -22,6 +22,8 @@ public class AccountController extends Controller {
         SessionHandler sessionHandler = SessionHandler.getInstance();
         Session session = sessionHandler.getSessionFactory().openSession();
 
+        boolean claiming = json.get("claim").asBoolean() == true;
+
         int profileId = json.get("profileId").asInt();
         String email = json.get("email").asText();
         String password = json.get("password").asText();
@@ -36,6 +38,9 @@ public class AccountController extends Controller {
         session.save(account);
         session.getTransaction().commit();
 
+        if (claiming) {
+            session.createQuery("delete from Ghost where profileid = :profileid").setParameter("profileid", profileId).executeUpdate();
+        }
         session.close();
         JsonNode response = Json.toJson(account);
 
