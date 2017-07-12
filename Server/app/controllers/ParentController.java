@@ -32,7 +32,7 @@ public class ParentController extends Controller {
         session = SessionHandler.getInstance().getSessionFactory().openSession();
         session.getTransaction().begin();
 
-        if (jsonNode.get("time").get("begin") != null) {
+        if (!jsonNode.get("time").get("begin").asText().equals("null")) {
             try {
                 begin = new Date(sdf1.parse(jsonNode.get("time").get("begin").asText()).getTime());
                 if (jsonNode.get("time").has("end")) {
