@@ -95,8 +95,10 @@ public class ProfileController extends Controller {
         bornEvent.setName(bornName);
         bornEvent.setDescription(bornDescription);
         session.save(bornEvent);
+
         // Born location
-        int bornLocationId = Util.createOrGetLocation(session, bornCity, bornProvince, bornCountry);
+        int bornLocationId = Util.createOrGetLocation(bornCity, bornProvince, bornCountry);
+        System.out.println("Location id: " + bornLocationId);
 
         // Lastly, born LocatedEvent
         Locatedevent bornLocatedEvent = new Locatedevent();
@@ -154,7 +156,7 @@ public class ProfileController extends Controller {
             session.save(diedEvent);
 
             // Born location
-            int diedLocationId = Util.createOrGetLocation(session, diedCity, diedProvince, diedCountry);
+            int diedLocationId = Util.createOrGetLocation(diedCity, diedProvince, diedCountry);
 
             Locatedevent diedLocatedEvent = new Locatedevent();
             diedLocatedEvent.setLocationid(diedLocationId);

@@ -128,7 +128,7 @@ public class EventController {
         // All event subtypes have a location
         String type = jsonNode.get("type").asText();
         if (type.equals("WorkEvent")) {
-            int locationId = Util.createOrGetLocation(session, jsonNode.get("location").get("city").asText(), jsonNode.get("location").get("province").asText(), jsonNode.get("location").get("country").asText());
+            int locationId = Util.createOrGetLocation(jsonNode.get("location").get("city").asText(), jsonNode.get("location").get("province").asText(), jsonNode.get("location").get("country").asText());
 
             Company company;
             Query query = session.createQuery("from Company where name = :companyName").setParameter("companyName", jsonNode.get("company").asText());
@@ -148,14 +148,14 @@ public class EventController {
             session.save(workevent);
 
         } else if (type.equals("LocatedEvent")) {
-            int locationId = Util.createOrGetLocation(session, jsonNode.get("location").get("city").asText(), jsonNode.get("location").get("province").asText(), jsonNode.get("location").get("country").asText());
+            int locationId = Util.createOrGetLocation(jsonNode.get("location").get("city").asText(), jsonNode.get("location").get("province").asText(), jsonNode.get("location").get("country").asText());
 
             Locatedevent locatedevent = new Locatedevent();
             locatedevent.setEventid(event.getPostid());
             locatedevent.setLocationid(locationId);
             session.save(locatedevent);
         } else if (type.equals("MoveEvent")) {
-            int locationId = Util.createOrGetLocation(session, jsonNode.get("location").get("city").asText(), jsonNode.get("location").get("province").asText(), jsonNode.get("location").get("country").asText());
+            int locationId = Util.createOrGetLocation(jsonNode.get("location").get("city").asText(), jsonNode.get("location").get("province").asText(), jsonNode.get("location").get("country").asText());
 
             Moveevent moveevent = new Moveevent();
             moveevent.setEventid(event.getPostid());

@@ -22,7 +22,6 @@ public class AccountController extends Controller {
         SessionHandler sessionHandler = SessionHandler.getInstance();
         Session session = sessionHandler.getSessionFactory().openSession();
 
-        boolean claiming = json.get("claim").asBoolean() == true;
 
         int profileId = json.get("profileId").asInt();
         String email = json.get("email").asText();
@@ -38,6 +37,8 @@ public class AccountController extends Controller {
         session.save(account);
         session.getTransaction().commit();
 
+        boolean claiming;
+        claiming = session.createQuery("from Ghost where profileid = :profileid").setParameter("profileid", profileId).getFirstResult() != null;
         if (claiming) {
             session.createQuery("delete from Ghost where profileid = :profileid").setParameter("profileid", profileId).executeUpdate();
         }

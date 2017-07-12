@@ -29,13 +29,25 @@ public class ParentController extends Controller {
         Date begin = null;
         Date end = null;
 
-        try {
-            begin = new Date(sdf1.parse(jsonNode.get("time").get("begin").asText()).getTime());
-            if (jsonNode.get("time").has("end")) {
-                end = new Date(sdf1.parse(jsonNode.get("time").get("end").asText()).getTime());
+        session = SessionHandler.getInstance().getSessionFactory().openSession();
+        session.getTransaction().begin();
+
+        if (jsonNode.get("time").get("begin") != null) {
+            try {
+                begin = new Date(sdf1.parse(jsonNode.get("time").get("begin").asText()).getTime());
+                if (jsonNode.get("time").has("end")) {
+                    end = new Date(sdf1.parse(jsonNode.get("time").get("end").asText()).getTime());
+                }
+            } catch (ParseException e) {
+                e.printStackTrace();
             }
-        } catch (ParseException e) {
-            e.printStackTrace();
+        } else {
+            if (parentType.equals("biological")) {
+                begin = (Date) session.createQuery("select st.time from Singletime st inner join Time t on t.id = st.timeid inner join Timedentity te on te.timeid = t.id where te.id = :childid").setParameter("childid", childId).list().get(0);
+            } else {
+                session.close();
+                return badRequest("If parent type is not biological, a begin date should be entered");
+            }
         }
 
 
@@ -46,10 +58,8 @@ public class ParentController extends Controller {
         System.out.println("Begin: " + begin);
         System.out.println("End: " + end);
 
-        session = SessionHandler.getInstance().getSessionFactory().openSession();
-        session.getTransaction().begin();
 
-        int timeId = -1;
+        int timeId;
         if (end == null) {
             timeId = findSingleTime(begin);
         } else {
@@ -86,11 +96,11 @@ public class ParentController extends Controller {
         parent.setTimedentityid(timedentity.getId());
         parent.setChildid(childId);
         parent.setParentsid(parentId);
-        if(parentType.equals("biological")) {
+        if (parentType.equals("biological")) {
             parent.setParentType(0);
         } else if (parentType.equals("adoptive")) {
             parent.setParentType(1);
-        } else if(parentType.equals("guardian")) {
+        } else if (parentType.equals("guardian")) {
             parent.setParentType(2);
         } else {
             return badRequest("Invalid parent type\n accepted types are: {\"adoptive\", \"biological\", \"guardian\"");
