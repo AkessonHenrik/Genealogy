@@ -8,6 +8,7 @@ import org.hibernate.Transaction;
 
 import javax.persistence.LockModeType;
 import javax.validation.ConstraintViolationException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Util {
@@ -97,4 +98,13 @@ public class Util {
         return createOrGetLocation(cityName, provinceName, countryName);
     }
 
+    public static List<Media> getEventMedia(Session session, int eventId) {
+        List<Eventmedia> em = session.createQuery("from Eventmedia where eventid = " + eventId).list();
+
+        List<Media> mediaList = new ArrayList<>();
+        for (Eventmedia eventmedia : em) {
+            mediaList.addAll(session.createQuery("from Media where postid = " + eventmedia.getMediaid()).list());
+        }
+        return mediaList;
+    }
 }

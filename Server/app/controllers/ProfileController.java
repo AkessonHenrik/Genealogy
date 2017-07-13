@@ -20,6 +20,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import static utils.Util.getEventMedia;
+
 public class ProfileController extends Controller {
 
     @Transactional
@@ -543,13 +545,29 @@ public class ProfileController extends Controller {
         return ok(Json.toJson(fullProfile));
     }
 
-    private List<Media> getEventMedia(Session session, int eventId) {
-        List<Eventmedia> em = session.createQuery("from Eventmedia where eventid = " + eventId).list();
 
-        List<Media> mediaList = new ArrayList<>();
-        for (Eventmedia eventmedia : em) {
-            mediaList.addAll(session.createQuery("from Media where postid = " + eventmedia.getMediaid()).list());
+    public Result isOwned() {
+        int ownerId = request().body().asJson().get("ownerid").asInt();
+        int timedEntityId = request().body().asJson().get("timedentityid").asInt();
+
+        // Replace with JWT verification
+        if (ownerId == timedEntityId) {
+            return ok(Json.toJson(true));
         }
-        return mediaList;
+
+
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        System.out.println("ownerId: " + ownerId);
+        System.out.println("TEID: " + timedEntityId);
+        Query query = session.createQuery("from Ghost where profileid = :timedEntityId and owner = :ownerId")
+                .setParameter("timedEntityId", timedEntityId)
+                .setParameter("ownerId", ownerId);
+        System.out.println(Json.toJson(query.list()));
+        if (query.list().size() == 0) {
+            session.close();
+            return ok(Json.toJson(false));
+        }
+        session.close();
+        return ok(Json.toJson(true));
     }
 }

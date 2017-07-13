@@ -1,6 +1,5 @@
 package controllers;
 
-import models.Profile;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import play.libs.Json;
