@@ -28,4 +28,4 @@ GET         /profile/:id          @controllers.ProfileController.getProfile(id: 
 POST        /event                @controllers.EventController.addEvent
 
 
-POST        /search               @controllers.SearchController.search2
+POST        /search               @controllers.SearchController.search

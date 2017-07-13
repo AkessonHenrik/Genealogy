@@ -46,18 +46,9 @@ public class ParentController extends Controller {
                 begin = (Date) session.createQuery("select st.time from Singletime st inner join Time t on t.id = st.timeid inner join Timedentity te on te.timeid = t.id where te.id = :childid").setParameter("childid", childId).list().get(0);
             } else {
                 session.close();
-                return badRequest("If parent type is not biological, a begin date should be entered");
+                return badRequest("If parent type is not biological, a begin date should be given");
             }
         }
-
-
-        System.out.println("Parent type: " + parentType);
-        System.out.println("Parent id : " + parentId);
-        System.out.println("Child id : " + childId);
-        System.out.println("Rel or single: " + relOrSingle);
-        System.out.println("Begin: " + begin);
-        System.out.println("End: " + end);
-
 
         int timeId;
         if (end == null) {

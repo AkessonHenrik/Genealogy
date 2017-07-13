@@ -105,9 +105,11 @@ public class RelationshipController extends Controller {
 
         // Select person whose id is given as parameter
         String query = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id;
-        System.out.println(query);
         List<Object[]> result = session.createQuery(query).list();
         SearchResult caller = null;
+        if(result.size() == 0) {
+            return notFound("User not found");
+        }
         for (Object[] resultObj : result) {
             int resid = (int) resultObj[0];
             String resfirstname = (String) resultObj[1];

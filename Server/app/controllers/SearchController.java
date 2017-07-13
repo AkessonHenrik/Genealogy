@@ -16,24 +16,14 @@ import java.util.List;
  * Created by Henrik on 11/07/2017.
  */
 public class SearchController extends Controller {
+
     public Result search() {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        String firstname = request().body().asJson().get("firstname").asText();
-        String lastname = request().body().asJson().get("lastname").asText();
-
-        Query query = session.createQuery("from Profile where firstname = :firstname and lastname = :lastname").setParameter("firstname", firstname).setParameter("lastname", lastname);
-        List<Profile> profiles = query.list();
-        session.close();
-        return ok(Json.toJson(profiles));
-    }
-
-    public Result search2() {
-        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
         String firstname = request().body().asJson().get("firstname").asText();
         String lastname = request().body().asJson().get("lastname").asText();
 
-        Query query = session.createQuery("select peopleentityid from Profile where firstname = :firstname and lastname = :lastname").setParameter("firstname", firstname).setParameter("lastname", lastname);
+        Query query = session.createQuery("select peopleentityid from Profile where firstname like '%" + firstname + "%' and lastname like '%" + lastname + "%'");//.setParameter("firstname", firstname).setParameter("lastname", lastname);
         List<Integer> ids = query.list();
         List<SearchResult> results = new ArrayList<>();
 
