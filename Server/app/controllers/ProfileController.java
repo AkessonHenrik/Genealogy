@@ -608,10 +608,11 @@ public class ProfileController extends Controller {
             profile.setLastname(jsonNode.get("lastname").asText());
         }
         session.getTransaction().begin();
-        if (jsonNode.has("profilePicture")) {
+        if (jsonNode.has("image")) {
             Media media = (Media) session.createQuery("from Media where postid = :postid").setParameter("postid", profile.getProfilepicture()).list().get(0);
-            media.setPath("http://localhost:9000/assets/" + jsonNode.get("profilePicture").asText());
+            media.setPath(jsonNode.get("image").asText());
             session.save(media);
+            profile.setProfilepicture(media.getPostid());
         }
 
         if (jsonNode.has("birthDay")) {
