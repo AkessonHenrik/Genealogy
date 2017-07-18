@@ -1,14 +1,14 @@
 package utils;
 
 import models.*;
-import org.hibernate.HibernateException;
-import org.hibernate.LockMode;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import org.hibernate.*;
 import play.libs.Json;
 
 import javax.persistence.LockModeType;
 import javax.validation.ConstraintViolationException;
+import java.sql.Date;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -108,5 +108,63 @@ public class Util {
         }
         System.out.println(Json.toJson(mediaList));
         return mediaList;
+    }
+
+    public static int getOrCreateTime(Date[] dates) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        if (dates.length == 2) {
+            // Time interval
+            Query query = session.createQuery("from Timeinterval ti where ti.begintime = :time1 and ti.enddate = :time2").setParameter("time1", dates[0]).setParameter("time2", dates[1]);
+            if (query.list().size() == 0) {
+                System.out.println("Create new time interval");
+                session.getTransaction().begin();
+                Time time = new Time();
+                session.save(time);
+                Timeinterval ti = new Timeinterval();
+                ti.setTimeid(time.getId());
+                ti.setBegintime(dates[0]);
+                ti.setEnddate(dates[1]);
+                session.save(ti);
+                session.getTransaction().commit();
+                session.close();
+                return ti.getTimeid();
+            } else {
+                session.close();
+                System.out.println("Return existing timeinterval");
+                return ((Timeinterval) query.list().get(0)).getTimeid();
+            }
+        } else {
+            // Single time
+            Query query = session.createQuery("from Singletime st where st.time = :time").setParameter("time", dates[0]);
+            if (query.list().size() == 0) {
+                System.out.println("Create new single time");
+                session.getTransaction().begin();
+                Time time = new Time();
+                session.save(time);
+                Singletime st = new Singletime();
+                st.setTime(dates[0]);
+                st.setTimeid(time.getId());
+                session.save(st);
+                session.getTransaction().commit();
+                session.close();
+                return st.getTimeid();
+            } else {
+                System.out.println("Return existing singletime");
+                int st = ((Singletime) query.list().get(0)).getTimeid();
+                session.close();
+                return st;
+            }
+        }
+    }
+
+    public static Date parseDateFromString(String dateToParse) {
+        try {
+            SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yyyy");
+            return new Date(sdf1.parse(dateToParse).getTime());
+        } catch (ParseException e) {
+            System.out.println("Exception while parsing date: " + e.getMessage());
+        }
+        return null;
     }
 }

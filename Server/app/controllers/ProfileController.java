@@ -30,7 +30,7 @@ public class ProfileController extends Controller {
     public Result createProfile() {
 
         JsonNode jsonNode = request().body().asJson();
-
+        System.out.println(jsonNode);
         // Extract values from request body
 
         String genderText = jsonNode.get("gender").asText();
@@ -48,8 +48,8 @@ public class ProfileController extends Controller {
 
         // Profile entity
         Profile profile = new Profile();
-        profile.setFirstname(jsonNode.get("firstName").asText());
-        profile.setLastname(jsonNode.get("lastName").asText());
+        profile.setFirstname(jsonNode.get("firstname").asText());
+        profile.setLastname(jsonNode.get("lastname").asText());
         profile.setGender(gender);
 
         // Profile values from request body
@@ -104,7 +104,6 @@ public class ProfileController extends Controller {
 
         // Born location
         int bornLocationId = Util.createOrGetLocation(bornCity, bornProvince, bornCountry);
-        System.out.println("Location id: " + bornLocationId);
 
         // Lastly, born LocatedEvent
         Locatedevent bornLocatedEvent = new Locatedevent();
@@ -115,24 +114,25 @@ public class ProfileController extends Controller {
         profile.setBorn(bornLocatedEvent.getEventid());
 
 
-        JsonNode died = jsonNode.get("died");
         String diedCity = null;
         String diedProvince = null;
         String diedCountry = null;
         String diedName = null;
         String diedDescription = null;
+        if (jsonNode.has("died")) {
+            JsonNode died = jsonNode.get("died");
 
-        if (died.has("location")) {
+            if (died.has("location")) {
 
-            diedName = died.get("name").asText();
-            diedDescription = died.get("description").asText();
+                diedName = died.get("name").asText();
+                diedDescription = died.get("description").asText();
 
-            diedCity = died.get("location").get("city").asText();
-            diedProvince = died.get("location").get("province").asText();
-            diedCountry = died.get("location").get("country").asText();
+                diedCity = died.get("location").get("city").asText();
+                diedProvince = died.get("location").get("province").asText();
+                diedCountry = died.get("location").get("country").asText();
 
+            }
         }
-
         // Profile timedEntity
         Timedentity profileTimedEntity = new Timedentity();
 
@@ -196,7 +196,13 @@ public class ProfileController extends Controller {
         if (jsonNode.has("profilePicture")) {
             profilePicturePath = jsonNode.get("profilePicture").asText();
         } else {
-            profilePicturePath = "http://www.wikiality.com/file/2016/11/bears1.jpg";
+            if (gender == 0) {
+                profilePicturePath = "http://s3.amazonaws.com/37assets/svn/765-default-avatar.png";
+            } else if (gender == 1) {
+                profilePicturePath = "https://singlesdatingworld.com/images/woman.jpg";
+            } else {
+                profilePicturePath = "https://maxcdn.icons8.com/Share/icon/Alphabet//question_mark1600.png";
+            }
         }
         Time profilePictureTime = new Time();
         session.save(profilePictureTime);
@@ -228,13 +234,11 @@ public class ProfileController extends Controller {
         bornOwner.setPeopleorrelationshipid(profileTimedEntity.getId());
         bornOwner.setTimedentityid(bornTimedEntity.getId());
         session.save(bornOwner);
-        System.out.println(Json.toJson(bornOwner).asText());
 
         if (diedEntity != null) {
             Timedentityowner diedOwner = new Timedentityowner();
             diedOwner.setPeopleorrelationshipid(profile.getPeopleentityid());
             diedOwner.setTimedentityid(diedEntity.getId());
-            System.out.println(Json.toJson(diedOwner).asText());
             session.save(diedOwner);
         }
 
@@ -251,7 +255,6 @@ public class ProfileController extends Controller {
         session.getTransaction().commit();
 
         JsonNode newProfile = Json.toJson(profile);
-        System.out.println(newProfile.toString());
 
 
         session.close();
@@ -609,6 +612,75 @@ public class ProfileController extends Controller {
             Media media = (Media) session.createQuery("from Media where postid = :postid").setParameter("postid", profile.getProfilepicture()).list().get(0);
             media.setPath("http://localhost:9000/assets/" + jsonNode.get("profilePicture").asText());
             session.save(media);
+        }
+
+        if (jsonNode.has("birthDay")) {
+            System.out.println("New birthday");
+            Timedentity birthDay = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", profile.getBorn()).list().get(0);
+            int newTimeId = Util.getOrCreateTime(new Date[]{Util.parseDateFromString(jsonNode.get("birthDay").asText())});
+            System.out.println("New time id: " + newTimeId);
+            birthDay.setTimeid(newTimeId);
+            session.save(birthDay);
+        }
+        if (jsonNode.has("born")) {
+            System.out.println("new born");
+            System.out.println(jsonNode.get("born"));
+            Event bornEvent = (Event) session.createQuery("from Event where postid = :id").setParameter("id", profile.getBorn()).list().get(0);
+            bornEvent.setDescription(jsonNode.get("born").get("description").asText());
+            session.save(bornEvent);
+            Locatedevent bornLocatedEvent = (Locatedevent) session.createQuery("from Locatedevent where eventid = :id").setParameter("id", profile.getBorn()).list().get(0);
+            bornLocatedEvent.setLocationid(Util.createOrGetLocation(jsonNode.get("born").get("location").get("city").asText(), jsonNode.get("born").get("location").get("province").asText(), jsonNode.get("born").get("location").get("country").asText()));
+            session.save(bornLocatedEvent);
+        }
+        if (jsonNode.has("deathDay") || jsonNode.has("died")) {
+            if (profile.getDied() == null) {
+                // Need to create death :-O
+                int deathTimeId = Util.getOrCreateTime(new Date[]{Util.parseDateFromString(jsonNode.get("deathDay").asText())});
+                Timedentity deathTE = new Timedentity();
+                deathTE.setTimeid(deathTimeId);
+                session.save(deathTE);
+
+                Post deathPost = new Post();
+                deathPost.setTimedentityid(deathTE.getId());
+                session.save(deathPost);
+
+                Event deathEvent = new Event();
+                deathEvent.setDescription(jsonNode.get("died").get("description").asText());
+                deathEvent.setName(jsonNode.get("died").get("name").asText());
+                deathEvent.setPostid(deathPost.getTimedentityid());
+                session.save(deathEvent);
+
+                Locatedevent death = new Locatedevent();
+                death.setEventid(deathEvent.getPostid());
+                death.setLocationid(Util.createOrGetLocation(jsonNode.get("died").get("location").get("city").asText(), jsonNode.get("died").get("location").get("province").asText(), jsonNode.get("died").get("location").get("country").asText()));
+                session.save(death);
+
+                profile.setDied(death.getEventid());
+
+            } else {
+                // Update date if necessary
+                if (jsonNode.has("deathDay")) {
+                    System.out.println("New deathday");
+                    Timedentity deathDay = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", profile.getDied()).list().get(0);
+
+                    deathDay.setTimeid(Util.getOrCreateTime(new Date[]{Util.parseDateFromString(jsonNode.get("deathDay").asText())}));
+                    session.save(deathDay);
+                }
+                // Update event if necessary
+                if (jsonNode.has("died")) {
+                    System.out.println(jsonNode.get("died"));
+                    Event diedEvent = (Event) session.createQuery("from Event where postid = :id").setParameter("id", profile.getDied()).list().get(0);
+                    diedEvent.setDescription(jsonNode.get("died").get("description").asText());
+                    session.save(diedEvent);
+                    Locatedevent diedLocatedEvent = (Locatedevent) session.createQuery("from Locatedevent where eventid = :id").setParameter("id", profile.getDied()).list().get(0);
+                    diedLocatedEvent.setLocationid(Util.createOrGetLocation(jsonNode.get("died").get("location").get("city").asText(), jsonNode.get("died").get("location").get("province").asText(), jsonNode.get("died").get("location").get("country").asText()));
+                    session.save(diedLocatedEvent);
+                }
+                // Update location if necessary
+            }
+        }
+        if (jsonNode.has("died")) {
+            System.out.println("new died");
         }
         session.save(profile);
         session.getTransaction().commit();
