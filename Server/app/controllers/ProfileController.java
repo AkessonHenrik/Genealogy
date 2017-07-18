@@ -586,7 +586,7 @@ public class ProfileController extends Controller {
         return ok(Json.toJson(true));
     }
 
-
+    @Transactional
     public Result updateProfile(Integer id) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Query query = session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id);
@@ -612,6 +612,18 @@ public class ProfileController extends Controller {
         }
         session.save(profile);
         session.getTransaction().commit();
+        session.close();
+        return ok();
+    }
+
+    public Result delete(Integer id) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        // Get profile picture id
+        Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id).list().get(0);
+        Timedentity profilePic = (Timedentity) session.createQuery("from Timedentity t where id = :id").setParameter("id", p.getProfilepicture()).list().get(0);
+        session.createQuery("delete from Timedentity where id = :id").setParameter("id", profilePic.getId()).executeUpdate();
+        session.createQuery("delete from Timedentity where id = :id").setParameter("id", id).executeUpdate();
         session.close();
         return ok();
     }
