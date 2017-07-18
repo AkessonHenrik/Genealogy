@@ -6,11 +6,13 @@ import org.hibernate.Query;
 import org.hibernate.Session;
 import play.db.jpa.Transactional;
 import play.libs.Json;
+import play.mvc.BodyParser;
 import play.mvc.Controller;
 import play.mvc.Http;
 import play.mvc.Result;
 import returnTypes.*;
 import utils.SessionHandler;
+import utils.UploadFile;
 import utils.Util;
 
 import java.io.File;
@@ -26,9 +28,11 @@ public class ProfileController extends Controller {
 
     @Transactional
     public Result createProfile() {
+
         JsonNode jsonNode = request().body().asJson();
 
         // Extract values from request body
+
         String genderText = jsonNode.get("gender").asText();
         Integer gender = genderText.equals("male") ? 0 : genderText.equals("female") ? 1 : 2;
 
@@ -299,15 +303,24 @@ public class ProfileController extends Controller {
         return ok(Json.toJson(results));
     }
 
+    @BodyParser.Of(value = BodyParser.MultipartFormData.class, maxLength = 1024 * 1024 * 1024)
     public Result upload() {
         Http.MultipartFormData body = request().body().asMultipartFormData();
-        Http.MultipartFormData.FilePart picture = body.getFile("picture");
-        if (picture != null) {
-            File file = picture.getFile();
-            String filename = String.valueOf(Math.abs(file.hashCode())) + ".jpg";
+        Http.MultipartFormData.FilePart formFile = body.getFile("file");
+        if (formFile == null) {
+            return ok();
+        }
+        String contentType = formFile.getContentType();
+        System.out.println(contentType);
+        String fileType = contentType.substring(0, contentType.indexOf("/"));
+        String extension = contentType.substring(contentType.indexOf("/") + 1);
+        File file = formFile.getFile();
+        String filename;
+        if (fileType.equals("video") || fileType.equals("image") || fileType.equals("audio")) {
+            filename = String.valueOf(Math.abs(file.hashCode())) + "." + extension;
             File definiteFile = new File("public/" + filename);
             if (file.renameTo(definiteFile)) {
-                return ok(Json.toJson(definiteFile.getName()));
+                return ok(Json.toJson(new UploadFile(fileType, filename)));
             } else {
                 return internalServerError();
             }
@@ -542,6 +555,8 @@ public class ProfileController extends Controller {
         fullProfile.born = bornEventResult;
         fullProfile.died = diedEventResult;
         session.close();
+        System.out.println("RETURNING");
+        System.out.println(Json.toJson(fullProfile));
         return ok(Json.toJson(fullProfile));
     }
 
@@ -569,5 +584,35 @@ public class ProfileController extends Controller {
         }
         session.close();
         return ok(Json.toJson(true));
+    }
+
+
+    public Result updateProfile(Integer id) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Query query = session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id);
+        Profile profile = null;
+        if (query.list().size() == 0) {
+            return notFound();
+        }
+        profile = (Profile) query.list().get(0);
+
+        JsonNode jsonNode = request().body().asJson();
+        System.out.println(jsonNode);
+        if (jsonNode.has("firstname")) {
+            profile.setFirstname(jsonNode.get("firstname").asText());
+        }
+        if (jsonNode.has("lastname")) {
+            profile.setLastname(jsonNode.get("lastname").asText());
+        }
+        session.getTransaction().begin();
+        if (jsonNode.has("profilePicture")) {
+            Media media = (Media) session.createQuery("from Media where postid = :postid").setParameter("postid", profile.getProfilepicture()).list().get(0);
+            media.setPath("http://localhost:9000/assets/" + jsonNode.get("profilePicture").asText());
+            session.save(media);
+        }
+        session.save(profile);
+        session.getTransaction().commit();
+        session.close();
+        return ok();
     }
 }

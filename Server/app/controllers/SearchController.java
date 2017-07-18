@@ -8,6 +8,7 @@ import play.mvc.Result;
 import returnTypes.SearchResult;
 import utils.SessionHandler;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 

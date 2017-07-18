@@ -5,6 +5,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
+import play.libs.Json;
 
 import javax.persistence.LockModeType;
 import javax.validation.ConstraintViolationException;
@@ -105,6 +106,7 @@ public class Util {
         for (Eventmedia eventmedia : em) {
             mediaList.addAll(session.createQuery("from Media where postid = " + eventmedia.getMediaid()).list());
         }
+        System.out.println(Json.toJson(mediaList));
         return mediaList;
     }
 }

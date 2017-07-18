@@ -1,9 +1,6 @@
 package models;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.sql.Timestamp;
 
 /**
@@ -15,9 +12,11 @@ public class Comment {
     private Integer postid;
     private Integer commenter;
     private Timestamp postedon;
+    private String content;
 
     @Id
     @Column(name = "id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     public int getId() {
         return id;
     }
@@ -42,8 +41,19 @@ public class Comment {
         return commenter;
     }
 
+
     public void setCommenter(Integer commenter) {
         this.commenter = commenter;
+    }
+
+    @Basic
+    @Column(name = "content")
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 
     @Basic

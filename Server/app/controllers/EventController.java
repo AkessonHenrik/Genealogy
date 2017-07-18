@@ -12,6 +12,7 @@ import returnTypes.LocatedEventResult;
 import returnTypes.LocationResult;
 import returnTypes.WorkEventResult;
 import utils.SessionHandler;
+import utils.UploadFile;
 import utils.Util;
 
 import java.sql.Date;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static play.mvc.Controller.request;
+import static play.mvc.Results.badRequest;
 import static play.mvc.Results.notFound;
 import static play.mvc.Results.ok;
 import static utils.Util.getEventMedia;
@@ -39,8 +41,13 @@ public class EventController {
          */
         String name = jsonNode.get("name").asText();
         String description = jsonNode.get("description").asText();
-        int id = jsonNode.get("id").asInt();
+        int id = -1;
+        if (jsonNode.has("id"))
+            id = jsonNode.get("id").asInt();
+
+        System.out.println(jsonNode);
         int ownerId = jsonNode.get("owner").asInt();
+
         boolean timeInterval = false;
         String begin = jsonNode.get("time").get(0).asText();
         String end = null;
@@ -78,7 +85,7 @@ public class EventController {
             session.save(singletime);
         }
 
-        if (id == -1) {
+        if (id < 0) {
             // Timed entity
             Timedentity timedentity = new Timedentity();
             timedentity.setTimeid(time.getId());
@@ -105,11 +112,14 @@ public class EventController {
         session.save(event);
 
         // Media
-        ArrayList<String> mediaUrls = new ArrayList<>();
+        ArrayList<UploadFile> media = new ArrayList<>();
         for (int i = 0; i < jsonNode.get("media").size(); i++) {
-            mediaUrls.add(jsonNode.get("media").get(i).get("path").asText());
+            String path = jsonNode.get("media").get(i).get("path").asText();
+            String type = jsonNode.get("media").get(i).get("type").asText();
+            media.add(new UploadFile(type, path));
         }
-        for (String mediaUrl : mediaUrls) {
+        System.out.println(Json.toJson(media));
+        for (UploadFile uploadFile : media) {
             Timedentity mediaTimedEntity = new Timedentity();
             mediaTimedEntity.setTimeid(time.getId());
             session.save(mediaTimedEntity);
@@ -123,15 +133,23 @@ public class EventController {
             mediaPost.setTimedentityid(mediaTimedEntity.getId());
             session.save(mediaPost);
 
-            Media media = new Media();
-            media.setPath(mediaUrl);
-            media.setType(0);
-            media.setPostid(mediaPost.getTimedentityid());
-            session.save(media);
+            Media m = new Media();
+            System.out.println(uploadFile.path);
+            m.setPath(uploadFile.path);
+            if (uploadFile.type.equals("image"))
+                m.setType(0);
+            else if (uploadFile.type.equals("video"))
+                m.setType(1);
+            else if (uploadFile.type.equals("audio"))
+                m.setType(2);
+            else
+                return badRequest();
+            m.setPostid(mediaPost.getTimedentityid());
+            session.save(m);
 
             Eventmedia eventmedia = new Eventmedia();
             eventmedia.setEventid(event.getPostid());
-            eventmedia.setMediaid(media.getPostid());
+            eventmedia.setMediaid(m.getPostid());
             session.save(eventmedia);
         }
 
@@ -158,6 +176,7 @@ public class EventController {
             session.save(workevent);
 
         } else if (type.equals("LocatedEvent")) {
+
             int locationId = Util.createOrGetLocation(jsonNode.get("location").get("city").asText(), jsonNode.get("location").get("province").asText(), jsonNode.get("location").get("country").asText());
 
             Locatedevent locatedevent = new Locatedevent();
@@ -216,7 +235,7 @@ public class EventController {
             session.close();
             return ok(Json.toJson(eventResult));
         } else {
-            return ok(Json.toJson("Not Found"));
+            return notFound();
         }
     }
 
@@ -264,7 +283,7 @@ public class EventController {
         return ok(Json.toJson(workEventResult));
     }
 
-    public Result getLocatedEvent(Integer id) {
+    private Result getLocatedEvent(Integer id) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         LocatedEventResult locatedEventResult = null;
         Query query = session.createQuery("from Locatedevent where eventid = :eventId");
@@ -295,7 +314,7 @@ public class EventController {
         return ok(Json.toJson(locatedEventResult));
     }
 
-    public Result getMoveEvent(Integer id) {
+    private Result getMoveEvent(Integer id) {
         return ok();
     }
 

@@ -284,12 +284,6 @@ public class RelationshipController extends Controller {
             results.add(caller);
         }
 
-        // Add parent's other children
-        System.out.println("KIDS");
-        for (Parentsof parent : parents) {
-            System.out.println(parent.getChildid());
-        }
-        System.out.println("END KIDS");
         FinalResult fr = new FinalResult();
         fr.people = results;
         fr.relationships = relationships;
