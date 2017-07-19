@@ -1,7 +1,14 @@
 package returnTypes;
 
+import models.Time;
+import org.hibernate.Session;
+import utils.SessionHandler;
+
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
+
+import static utils.Util.getDates;
 
 public class SearchResult {
     public int id;
@@ -9,12 +16,18 @@ public class SearchResult {
     public String lastname;
     public String image;
     public int gender;
+    public Date born, died;
+
     public SearchResult(int id, String firstname, String lastname, String profilePicture, int gender) {
         this.id = id;
         this.firstname = firstname;
         this.lastname = lastname;
         this.image = profilePicture;
         this.gender = gender;
+        Date[] dates = getDates(id);
+        this.born = dates[0];
+        if (dates.length > 1)
+            this.died = dates[1];
     }
 
     @Override
@@ -29,6 +42,7 @@ public class SearchResult {
     }
 
     public static List<SearchResult> createSearchResultPersonFromQueryResult(List<Object[]> kids) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         List<SearchResult> results = new ArrayList<>();
         for (Object[] resultObj : kids) {
             int resid = (int) resultObj[0];
@@ -46,6 +60,7 @@ public class SearchResult {
                 results.add(new SearchResult(resid, resfirstname, reslastname, resPath, resGender));
             }
         }
+        session.close();
         return results;
     }
 }

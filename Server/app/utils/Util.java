@@ -2,6 +2,7 @@ package utils;
 
 import models.*;
 import org.hibernate.*;
+import org.hibernate.transform.Transformers;
 import play.libs.Json;
 
 import javax.persistence.LockModeType;
@@ -165,6 +166,30 @@ public class Util {
         } catch (ParseException e) {
             System.out.println("Exception while parsing date: " + e.getMessage());
         }
+        return null;
+    }
+
+    public static Date[] getDates(int id) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", id).list().get(0);
+        Time time = (Time) session.createQuery("from Time where id = :id").setParameter("id", timedentity.getTimeid()).list().get(0);
+        // Single time
+        Query query = session.createQuery("from Singletime where timeid = :id").setParameter("id", time.getId());
+        if (query.list().size() > 0) {
+            Singletime singletime = (Singletime) query.list().get(0);
+            session.close();
+            return new Date[]{singletime.getTime()};
+        }
+
+        // Time interval
+        query = session.createQuery("from Timeinterval where timeid = :id").setParameter("id", time.getId());
+        if (query.list().size() > 0) {
+            Timeinterval timeinterval = (Timeinterval) query.list().get(0);
+            session.close();
+            return new Date[]{timeinterval.getBegintime(), timeinterval.getEnddate()};
+        }
+
+        session.close();
         return null;
     }
 }

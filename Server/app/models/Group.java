@@ -1,14 +1,12 @@
 package models;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.*;
 
 /**
  * Created by Henrik on 18/06/2017.
  */
 @Entity
+@Table(name="`group`")
 public class Group {
     private int id;
     private String name;
@@ -16,6 +14,7 @@ public class Group {
 
     @Id
     @Column(name = "id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     public int getId() {
         return id;
     }

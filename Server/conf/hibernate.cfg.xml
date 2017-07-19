@@ -5,7 +5,8 @@
 <hibernate-configuration>
     <session-factory>
         <property name="connection.driver_class">org.postgresql.Driver</property>
-        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/postgres?currentSchema=familytree</property>
+        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/postgres?currentSchema=familytree
+        </property>
         <property name="hibernate.connection.username">postgres</property>
         <property name="hibernate.connection.password">root</property>
         <mapping class="models.Access"/>
@@ -44,6 +45,7 @@
         <mapping class="models.Timeinterval"/>
         <mapping class="models.Visibleby"/>
         <mapping class="models.Workevent"/>
+        <mapping class="models.Grouppeople"/>
         <!-- <property name="connection.username"/> -->
         <!-- <property name="connection.password"/> -->
 

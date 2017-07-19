@@ -8,6 +8,7 @@ import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
 import returnTypes.FinalResult;
+import returnTypes.ParentSearchResult;
 import returnTypes.RelationshipSearchResult;
 import returnTypes.SearchResult;
 import utils.SessionHandler;
@@ -107,7 +108,7 @@ public class RelationshipController extends Controller {
         String query = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id;
         List<Object[]> result = session.createQuery(query).list();
         SearchResult caller = null;
-        if(result.size() == 0) {
+        if (result.size() == 0) {
             return notFound("User not found");
         }
         for (Object[] resultObj : result) {
@@ -287,7 +288,11 @@ public class RelationshipController extends Controller {
         FinalResult fr = new FinalResult();
         fr.people = results;
         fr.relationships = relationships;
-        fr.parents = parents;
+        List<ParentSearchResult> parentSearchResults = new ArrayList<>();
+        for (Parentsof p : parents) {
+            parentSearchResults.add(new ParentSearchResult(p));
+        }
+        fr.parents = parentSearchResults;
 
         session.getTransaction().commit();
         session.close();

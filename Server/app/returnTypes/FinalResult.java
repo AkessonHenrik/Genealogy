@@ -10,5 +10,5 @@ import java.util.List;
 public class FinalResult {
     public List<RelationshipSearchResult> relationships;
     public List<SearchResult> people;
-    public List<Parentsof> parents;
+    public List<ParentSearchResult> parents;
 }

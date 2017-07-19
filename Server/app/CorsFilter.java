@@ -1,21 +1,29 @@
+import play.api.mvc.EssentialAction;
 import play.api.mvc.EssentialFilter;
 import play.filters.cors.CORSFilter;
 import play.http.HttpFilters;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.concurrent.Executor;
 
-public class CorsFilter implements HttpFilters {
+@Singleton
+class SecurityFilter implements EssentialFilter {
+
+    private final Executor executor;
+
     @Inject
-    public CorsFilter(CORSFilter corsFilter) {
+    public SecurityFilter(Executor executor) {
+        super();
+        this.executor = executor;
     }
 
     @Override
-    public EssentialFilter[] filters() {
-        return new EssentialFilter[0];
+    public EssentialAction apply(EssentialAction next) {
+        System.out.println("Hey");
+        return next;
     }
 }
-
 
 @Singleton
 class Filters implements HttpFilters {
@@ -27,6 +35,7 @@ class Filters implements HttpFilters {
     }
 
     public EssentialFilter[] filters() {
+        System.out.println("Hello filter");
         return new CORSFilter[]{corsFilter};
     }
 }

@@ -41,3 +41,5 @@ POST          /comment                @controllers.CommentController.postComment
 PATCH         /profile/:id            @controllers.ProfileController.updateProfile(id: Integer)
 
 DELETE        /profile/:id            @controllers.ProfileController.delete(id: Integer)
+
+POST          /group                  @controllers.GroupController.createGroup

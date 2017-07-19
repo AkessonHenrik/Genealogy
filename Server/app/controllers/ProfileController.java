@@ -33,8 +33,7 @@ public class ProfileController extends Controller {
         System.out.println(jsonNode);
         // Extract values from request body
 
-        String genderText = jsonNode.get("gender").asText();
-        Integer gender = genderText.equals("male") ? 0 : genderText.equals("female") ? 1 : 2;
+        Integer gender = jsonNode.get("gender").asInt();
 
         String birthDay = jsonNode.get("birthDay").asText();
         String deathDay = "";
@@ -593,7 +592,7 @@ public class ProfileController extends Controller {
     public Result updateProfile(Integer id) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Query query = session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id);
-        Profile profile = null;
+        Profile profile;
         if (query.list().size() == 0) {
             return notFound();
         }
@@ -677,11 +676,7 @@ public class ProfileController extends Controller {
                     diedLocatedEvent.setLocationid(Util.createOrGetLocation(jsonNode.get("died").get("location").get("city").asText(), jsonNode.get("died").get("location").get("province").asText(), jsonNode.get("died").get("location").get("country").asText()));
                     session.save(diedLocatedEvent);
                 }
-                // Update location if necessary
             }
-        }
-        if (jsonNode.has("died")) {
-            System.out.println("new died");
         }
         session.save(profile);
         session.getTransaction().commit();
@@ -695,7 +690,9 @@ public class ProfileController extends Controller {
         // Get profile picture id
         Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id).list().get(0);
         Timedentity profilePic = (Timedentity) session.createQuery("from Timedentity t where id = :id").setParameter("id", p.getProfilepicture()).list().get(0);
+        // Delete profile picture
         session.createQuery("delete from Timedentity where id = :id").setParameter("id", profilePic.getId()).executeUpdate();
+        // Delete person
         session.createQuery("delete from Timedentity where id = :id").setParameter("id", id).executeUpdate();
         session.close();
         return ok();
