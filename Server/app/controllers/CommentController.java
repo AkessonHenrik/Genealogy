@@ -50,7 +50,7 @@ public class CommentController extends Controller {
         session.save(comment);
 
         Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", comment.getCommenter()).list().get(0);
-        CommentResult result = new CommentResult(new Date(((Timestamp) comment.getPostedon()).getTime()).toString(), comment.getContent(), p.getFirstname() + " " + p.getLastname());
+        CommentResult result = new CommentResult(new Date(comment.getPostedon().getTime()).toString(), comment.getContent(), p.getFirstname() + " " + p.getLastname());
         session.close();
         return ok(Json.toJson(result));
     }

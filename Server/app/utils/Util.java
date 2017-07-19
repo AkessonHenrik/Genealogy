@@ -116,7 +116,7 @@ public class Util {
 
         if (dates.length == 2) {
             // Time interval
-            Query query = session.createQuery("from Timeinterval ti where ti.begintime = :time1 and ti.enddate = :time2").setParameter("time1", dates[0]).setParameter("time2", dates[1]);
+            Query query = session.createQuery("from Timeinterval ti where ti.begintime = :time1 and ti.endtime = :time2").setParameter("time1", dates[0]).setParameter("time2", dates[1]);
             if (query.list().size() == 0) {
                 System.out.println("Create new time interval");
                 session.getTransaction().begin();
@@ -125,7 +125,7 @@ public class Util {
                 Timeinterval ti = new Timeinterval();
                 ti.setTimeid(time.getId());
                 ti.setBegintime(dates[0]);
-                ti.setEnddate(dates[1]);
+                ti.setEndtime(dates[1]);
                 session.save(ti);
                 session.getTransaction().commit();
                 session.close();
@@ -186,7 +186,7 @@ public class Util {
         if (query.list().size() > 0) {
             Timeinterval timeinterval = (Timeinterval) query.list().get(0);
             session.close();
-            return new Date[]{timeinterval.getBegintime(), timeinterval.getEnddate()};
+            return new Date[]{timeinterval.getBegintime(), timeinterval.getEndtime()};
         }
 
         session.close();

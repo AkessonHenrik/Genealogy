@@ -76,7 +76,7 @@ public class EventController {
             Timeinterval timeinterval = new Timeinterval();
             timeinterval.setTimeid(time.getId());
             timeinterval.setBegintime(beginDate);
-            timeinterval.setEnddate(endDate);
+            timeinterval.setEndtime(endDate);
             session.save(timeinterval);
         } else {
             Singletime singletime = new Singletime();
@@ -225,7 +225,7 @@ public class EventController {
         query = session.createQuery("from Timeinterval where timeid = :timeid");
         query.setParameter("timeid", teId);
         for (Timeinterval ti : (List<Timeinterval>) query.list()) {
-            times = new String[]{ti.getBegintime().toString(), ti.getEnddate().toString()};
+            times = new String[]{ti.getBegintime().toString(), ti.getEndtime().toString()};
         }
         query = session.createQuery("from Event where postid = :id").setParameter("id", id);
         if (query.list().size() > 0) {
@@ -252,7 +252,7 @@ public class EventController {
         query = session.createQuery("from Timeinterval where timeid = :timeid");
         query.setParameter("timeid", teId);
         for (Timeinterval ti : (List<Timeinterval>) query.list()) {
-            times = new String[]{ti.getBegintime().toString(), ti.getEnddate().toString()};
+            times = new String[]{ti.getBegintime().toString(), ti.getEndtime().toString()};
         }
         Event event = (Event) session.createQuery("from Event where postid = :id").setParameter("id", id).list().get(0);
         query = session.createQuery("from Workevent where eventid = :eventId");

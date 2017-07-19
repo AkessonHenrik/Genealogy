@@ -62,14 +62,10 @@ public class ProfileController extends Controller {
 //        JsonNode bornMedia = bornNode.get("media");
 
 
-        // Create Time for birth
-        Time birthtime = new Time();
-        session.save(birthtime);
-
         Date birthDayDate = null;
         Date deathDayDate = null;
         try {
-            SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yyyy");
+            SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
             birthDayDate = new Date(sdf1.parse(birthDay).getTime());
             if (!deathDay.equals("")) {
                 deathDayDate = new Date(sdf1.parse(deathDay).getTime());
@@ -78,15 +74,10 @@ public class ProfileController extends Controller {
             System.out.println("Exception while parsing date: " + e.getMessage());
         }
 
-        Singletime birthSingleTime = new Singletime();
-        birthSingleTime.setTimeid(birthtime.getId());
-        birthSingleTime.setTime(birthDayDate);
-        session.save(birthSingleTime);
-
         // Born locatedevent
         // First, born timedEntity
         Timedentity bornTimedEntity = new Timedentity();
-        bornTimedEntity.setTimeid(birthSingleTime.getTimeid());
+        bornTimedEntity.setTimeid(Util.getOrCreateTime(new Date[]{birthDayDate}));
         session.save(bornTimedEntity);
 
         // Second, born Post entity
@@ -138,16 +129,8 @@ public class ProfileController extends Controller {
         // Died locatedevent
         Timedentity diedEntity = null;
         if (deathDayDate != null) {
-            Time diedTime = new Time();
-            session.save(diedTime);
-
-            Singletime diedSingleTime = new Singletime();
-            diedSingleTime.setTimeid(diedTime.getId());
-            diedSingleTime.setTime(deathDayDate);
-            session.save(diedSingleTime);
-
             diedEntity = new Timedentity();
-            diedEntity.setTimeid(diedTime.getId());
+            diedEntity.setTimeid(Util.getOrCreateTime(new Date[]{deathDayDate}));
             session.save(diedEntity);
 
             Post diedPost = new Post();
@@ -169,14 +152,7 @@ public class ProfileController extends Controller {
             session.save(diedLocatedEvent);
 
             profile.setDied(diedLocatedEvent.getEventid());
-            Time lifeTime = new Time();
-            session.save(lifeTime);
-            Timeinterval lifeSpan = new Timeinterval();
-            lifeSpan.setTimeid(lifeTime.getId());
-            lifeSpan.setBegintime(birthSingleTime.getTime());
-            lifeSpan.setEnddate(deathDayDate);
-            session.save(lifeSpan);
-            profileTimedEntity.setTimeid(lifeSpan.getTimeid());
+            profileTimedEntity.setTimeid(Util.getOrCreateTime(new Date[]{birthDayDate, deathDayDate}));
         } else {
             profileTimedEntity.setTimeid(bornTimedEntity.getTimeid());
         }
@@ -453,7 +429,7 @@ public class ProfileController extends Controller {
             query = session.createQuery("from Timeinterval where timeid = :timeid");
             query.setParameter("timeid", teId);
             for (Timeinterval ti : (List<Timeinterval>) query.list()) {
-                times.add(new String[]{ti.getBegintime().toString(), ti.getEnddate().toString()});
+                times.add(new String[]{ti.getBegintime().toString(), ti.getEndtime().toString()});
             }
 
             // Located event?
@@ -618,7 +594,6 @@ public class ProfileController extends Controller {
             System.out.println("New birthday");
             Timedentity birthDay = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", profile.getBorn()).list().get(0);
             int newTimeId = Util.getOrCreateTime(new Date[]{Util.parseDateFromString(jsonNode.get("birthDay").asText())});
-            System.out.println("New time id: " + newTimeId);
             birthDay.setTimeid(newTimeId);
             session.save(birthDay);
         }

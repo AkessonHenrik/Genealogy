@@ -12,6 +12,7 @@ import returnTypes.ParentSearchResult;
 import returnTypes.RelationshipSearchResult;
 import returnTypes.SearchResult;
 import utils.SessionHandler;
+import utils.Util;
 
 import java.sql.Date;
 import java.text.ParseException;
@@ -51,36 +52,27 @@ public class RelationshipController extends Controller {
 
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         session.getTransaction().begin();
-        Time time = new Time();
-        session.save(time);
-
         String beginTime = jsonNode.get("time").get("begin").asText();
         String endTime = null;
         if (jsonNode.get("time").has("end")) {
             endTime = jsonNode.get("time").get("end").asText();
         }
-        SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yyyy");
+        int timeid = 0;
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
         try {
             Date beginDate = new Date(sdf1.parse(beginTime).getTime());
 
             if (endTime == null) {
-                Singletime singletime = new Singletime();
-                singletime.setTimeid(time.getId());
-                singletime.setTime(beginDate);
-                session.save(singletime);
+                timeid = Util.getOrCreateTime(new Date[]{beginDate});
             } else {
-                Timeinterval timeinterval = new Timeinterval();
-                timeinterval.setTimeid(time.getId());
-                timeinterval.setBegintime(beginDate);
-                timeinterval.setEnddate(new Date(sdf1.parse(endTime).getTime()));
-                session.save(timeinterval);
+                timeid = Util.getOrCreateTime(new Date[]{beginDate, new Date(sdf1.parse(endTime).getTime())});
             }
         } catch (ParseException e) {
             e.printStackTrace();
         }
 
         Timedentity timedentity = new Timedentity();
-        timedentity.setTimeid(time.getId());
+        timedentity.setTimeid(timeid);
         session.save(timedentity);
 
         Peopleentity peopleentity = new Peopleentity();
@@ -128,7 +120,7 @@ public class RelationshipController extends Controller {
                 "r.type as type, " +
                 "st.time as time, " +
                 "ti.begintime as begintime, " +
-                "ti.enddate as endtime " +
+                "ti.endtime as endtime " +
                 "from Relationship as r " +
                 "join Peopleentity as pe on pe.timedentityid = r.id " +
                 "join Timedentity as td on td.id = pe.timedentityid " +
@@ -241,7 +233,7 @@ public class RelationshipController extends Controller {
                     "r.type as type, " +
                     "st.time as time, " +
                     "ti.begintime as begintime, " +
-                    "ti.enddate as endtime " +
+                    "ti.endtime as endtime " +
                     "from Relationship as r " +
                     "join Peopleentity as pe on pe.timedentityid = r.id " +
                     "join Timedentity as td on td.id = pe.timedentityid " +

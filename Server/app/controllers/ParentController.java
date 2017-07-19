@@ -24,7 +24,7 @@ public class ParentController extends Controller {
         String relOrSingle = jsonNode.get("parent").get("type").asText();
 
 
-        SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yyyy");
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
 
         Date begin = null;
         Date end = null;
@@ -72,7 +72,7 @@ public class ParentController extends Controller {
                 Timeinterval ti = new Timeinterval();
                 ti.setTimeid(time.getId());
                 ti.setBegintime(begin);
-                ti.setEnddate(end);
+                ti.setEndtime(end);
                 session.save(ti);
             }
         }
@@ -117,7 +117,7 @@ public class ParentController extends Controller {
 
     public int findTimeInterval(Date begin, Date end) {
 
-        List<Timeinterval> times = session.createQuery("from Timeinterval where begintime = '" + begin.toString() + "' and enddate = '" + end.toString() + "'").list();
+        List<Timeinterval> times = session.createQuery("from Timeinterval where begintime = '" + begin.toString() + "' and endtime = '" + end.toString() + "'").list();
         if (times.size() == 0) {
             System.out.println("No Times");
             return -1;

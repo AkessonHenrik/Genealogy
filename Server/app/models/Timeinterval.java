@@ -13,7 +13,7 @@ import java.sql.Date;
 public class Timeinterval {
     private int timeid;
     private Date begintime;
-    private Date enddate;
+    private Date endtime;
 
     @Id
     @Column(name = "timeid")
@@ -35,14 +35,15 @@ public class Timeinterval {
         this.begintime = begintime;
     }
 
+
     @Basic
-    @Column(name = "enddate")
-    public Date getEnddate() {
-        return enddate;
+    @Column(name = "endtime")
+    public Date getEndtime() {
+        return endtime;
     }
 
-    public void setEnddate(Date enddate) {
-        this.enddate = enddate;
+    public void setEndtime(Date endtime) {
+        this.endtime = endtime;
     }
 
     @Override
@@ -54,7 +55,7 @@ public class Timeinterval {
 
         if (timeid != that.timeid) return false;
         if (begintime != null ? !begintime.equals(that.begintime) : that.begintime != null) return false;
-        if (enddate != null ? !enddate.equals(that.enddate) : that.enddate != null) return false;
+        if (endtime != null ? !endtime.equals(that.endtime) : that.endtime != null) return false;
 
         return true;
     }
@@ -63,7 +64,8 @@ public class Timeinterval {
     public int hashCode() {
         int result = timeid;
         result = 31 * result + (begintime != null ? begintime.hashCode() : 0);
-        result = 31 * result + (enddate != null ? enddate.hashCode() : 0);
+        result = 31 * result + (endtime != null ? endtime.hashCode() : 0);
         return result;
     }
+
 }
