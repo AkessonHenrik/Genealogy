@@ -45,7 +45,6 @@ public class EventController {
         if (jsonNode.has("id"))
             id = jsonNode.get("id").asInt();
 
-        System.out.println(jsonNode);
         int ownerId = jsonNode.get("owner").asInt();
 
         boolean timeInterval = false;
@@ -65,6 +64,7 @@ public class EventController {
         Time time = new Time();
         session.save(time);
         SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yyyy");
+
         try {
             if (timeInterval)
                 endDate = new Date(sdf1.parse(end).getTime());
@@ -72,23 +72,16 @@ public class EventController {
         } catch (ParseException e) {
             System.out.println("Exception while parsing date: " + e.getMessage());
         }
-        if (timeInterval) {
-            Timeinterval timeinterval = new Timeinterval();
-            timeinterval.setTimeid(time.getId());
-            timeinterval.setBegintime(beginDate);
-            timeinterval.setEndtime(endDate);
-            session.save(timeinterval);
-        } else {
-            Singletime singletime = new Singletime();
-            singletime.setTimeid(time.getId());
-            singletime.setTime(beginDate);
-            session.save(singletime);
-        }
+        int timeId;
+        if (timeInterval)
+            timeId = Util.getOrCreateTime(new Date[]{beginDate, endDate});
+        else
+            timeId = Util.getOrCreateTime(new Date[]{beginDate});
 
         if (id < 0) {
             // Timed entity
             Timedentity timedentity = new Timedentity();
-            timedentity.setTimeid(time.getId());
+            timedentity.setTimeid(timeId);
             session.save(timedentity);
 
             // Owner
@@ -118,7 +111,6 @@ public class EventController {
             String type = jsonNode.get("media").get(i).get("type").asText();
             media.add(new UploadFile(type, path));
         }
-        System.out.println(Json.toJson(media));
         for (UploadFile uploadFile : media) {
             Timedentity mediaTimedEntity = new Timedentity();
             mediaTimedEntity.setTimeid(time.getId());
@@ -134,7 +126,6 @@ public class EventController {
             session.save(mediaPost);
 
             Media m = new Media();
-            System.out.println(uploadFile.path);
             m.setPath(uploadFile.path);
             if (uploadFile.type.equals("image"))
                 m.setType(0);
@@ -191,9 +182,15 @@ public class EventController {
             moveevent.setLocationid(locationId);
             session.save(moveevent);
         }
-
         session.getTransaction().commit();
 
+        if (jsonNode.has("visibility")) {
+            if (!Util.setVisibilityToEntity(event.getPostid(), jsonNode.get("visibility"))) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest();
+            }
+        }
         session.close();
         return ok(Json.toJson(event));
     }
@@ -278,7 +275,6 @@ public class EventController {
 
             Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
             workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times, getEventMedia(session, workevent.getEventid()));
-            System.out.println(Json.toJson(workEventResult));
         }
         return ok(Json.toJson(workEventResult));
     }
@@ -308,7 +304,6 @@ public class EventController {
             Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", diedEvent.getPostid()).list().get(0);
             Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
             locatedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), new String[]{time.getTime().toString()}, Util.getEventMedia(session, diedEvent.getPostid()));
-            System.out.println(Json.toJson(locatedEventResult));
         }
         session.close();
         return ok(Json.toJson(locatedEventResult));

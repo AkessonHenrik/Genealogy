@@ -1,18 +1,15 @@
 package models;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.*;
 
-/**
- * Created by Henrik on 18/06/2017.
- */
 @Entity
 public class Access {
     private int id;
+    private int timedentityid;
 
     @Id
     @Column(name = "id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     public int getId() {
         return id;
     }
@@ -36,5 +33,15 @@ public class Access {
     @Override
     public int hashCode() {
         return id;
+    }
+
+    @Basic
+    @Column(name = "timedentityid")
+    public int getTimedentityid() {
+        return timedentityid;
+    }
+
+    public void setTimedentityid(int timedentityid) {
+        this.timedentityid = timedentityid;
     }
 }

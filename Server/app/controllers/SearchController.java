@@ -23,7 +23,7 @@ public class SearchController extends Controller {
         String firstname = request().body().asJson().get("firstname").asText();
         String lastname = request().body().asJson().get("lastname").asText();
 
-        Query query = session.createQuery("select peopleentityid from Profile where firstname like '%" + firstname + "%' and lastname like '%" + lastname + "%'");//.setParameter("firstname", firstname).setParameter("lastname", lastname);
+        Query query = session.createQuery("select peopleentityid from Profile where firstname like '%" + firstname + "%' and lastname like '%" + lastname + "%'");
         List<Integer> ids = query.list();
         List<SearchResult> results = new ArrayList<>();
 

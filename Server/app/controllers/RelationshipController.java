@@ -2,6 +2,7 @@ package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import models.*;
+import org.hibernate.Query;
 import org.hibernate.Session;
 import play.db.jpa.Transactional;
 import play.libs.Json;
@@ -51,25 +52,53 @@ public class RelationshipController extends Controller {
         }
 
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        session.getTransaction().begin();
         String beginTime = jsonNode.get("time").get("begin").asText();
         String endTime = null;
         if (jsonNode.get("time").has("end")) {
             endTime = jsonNode.get("time").get("end").asText();
         }
-        int timeid = 0;
+
+        Timedentity p1 = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", profile1).list().get(0);
+        Timedentity p2 = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", profile2).list().get(0);
+
+
+        Date beginDate = null;
+        Date endDate = null;
+        int timeid;
         SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
         try {
-            Date beginDate = new Date(sdf1.parse(beginTime).getTime());
+            beginDate = new Date(sdf1.parse(beginTime).getTime());
+            if (endTime != null)
+                endDate = new Date(sdf1.parse(endTime).getTime());
 
-            if (endTime == null) {
-                timeid = Util.getOrCreateTime(new Date[]{beginDate});
-            } else {
-                timeid = Util.getOrCreateTime(new Date[]{beginDate, new Date(sdf1.parse(endTime).getTime())});
-            }
         } catch (ParseException e) {
             e.printStackTrace();
         }
+        if (endDate != null) {
+            if (endDate.before(beginDate)) {
+                session.close();
+                return badRequest("Begin date is after end date");
+            }
+        }
+
+        // Compare p1 and p2 dates with relationship dates
+//        if (!validateRelationshipDates(session, p1.getTimeid(), beginDate, endDate) || !validateRelationshipDates(session, p2.getTimeid(), beginDate, endDate)) {
+//            session.close();
+//            return badRequest("Incoherent relationship dates with profiles");
+//        }
+
+        if (endDate == null) {
+            Query query = session.createQuery("from Timeinterval where timeid = :id").setParameter("id", p1.getTimeid());
+            if (query.list().size() > 0) {
+                endDate = ((Timeinterval) query.list().get(0)).getEndtime();
+                timeid = Util.getOrCreateTime(new Date[]{beginDate, endDate});
+            } else {
+                timeid = Util.getOrCreateTime(new Date[]{beginDate});
+            }
+        } else {
+            timeid = Util.getOrCreateTime(new Date[]{beginDate, endDate});
+        }
+        session.getTransaction().begin();
 
         Timedentity timedentity = new Timedentity();
         timedentity.setTimeid(timeid);
@@ -85,7 +114,13 @@ public class RelationshipController extends Controller {
         relationship.setProfile2(profile2);
         relationship.setType(type);
         session.save(relationship);
-
+        if (jsonNode.has("visibility")) {
+            if (!Util.setVisibilityToEntity(relationship.getId(), jsonNode.get("visibility"))) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest();
+            }
+        }
         session.getTransaction().commit();
         return ok(Json.toJson(relationship).toString());
     }
@@ -148,7 +183,6 @@ public class RelationshipController extends Controller {
             Date resBeginTime = (Date) rel[5];
             Date resEndTime = (Date) rel[6];
             RelationshipSearchResult toAdd = new RelationshipSearchResult(resId, resP1, resP2, resType, resTime, resBeginTime, resEndTime);
-            System.out.println(toAdd);
             relationships.add(toAdd);
         }
 
@@ -255,7 +289,6 @@ public class RelationshipController extends Controller {
                 Date resBeginTime = (Date) rel[5];
                 Date resEndTime = (Date) rel[6];
                 RelationshipSearchResult toAdd = new RelationshipSearchResult(resId, resP1, resP2, resType, resTime, resBeginTime, resEndTime);
-                System.out.println(toAdd);
                 boolean alreadyIn = false;
                 for (RelationshipSearchResult relation : relationships) {
                     if (relation.id == toAdd.id)
@@ -278,12 +311,33 @@ public class RelationshipController extends Controller {
         }
 
         FinalResult fr = new FinalResult();
+        List<Integer> ids = new ArrayList<>();
+        results.removeIf(r -> {
+            if (ids.contains(r.id))
+                return true;
+            ids.add(r.id);
+            return false;
+        });
         fr.people = results;
+        ids.clear();
+        relationships.removeIf(rel -> {
+            if (ids.contains(rel.id))
+                return true;
+            ids.add(rel.id);
+            return false;
+        });
         fr.relationships = relationships;
+        ids.clear();
         List<ParentSearchResult> parentSearchResults = new ArrayList<>();
         for (Parentsof p : parents) {
             parentSearchResults.add(new ParentSearchResult(p));
         }
+        parentSearchResults.removeIf(p -> {
+            if (ids.contains(p.timedentityid))
+                return true;
+            ids.add(p.timedentityid);
+            return false;
+        });
         fr.parents = parentSearchResults;
 
         session.getTransaction().commit();
@@ -302,5 +356,29 @@ public class RelationshipController extends Controller {
         return results;
     }
 
+    private boolean validateRelationshipDates(Session session, int timeId, Date beginDate, Date endDate) {
+        Query query = session.createQuery("from Singletime where timeid = :id").setParameter("id", timeId);
+        if (query.list().size() > 0) { // Single time
+            Singletime st = (Singletime) query.list().get(0);
+            // Only compare to relationship begin time because relationship begin and end times have already been validated
+            if (st.getTime().after(beginDate)) {
+                return false;
+            }
+        } else {
+            // Profile is a time interval
+            query = session.createQuery("from Timeinterval where timeid = :id").setParameter("id", timeId);
+            Timeinterval ti = (Timeinterval) query.list().get(0);
+            if (endDate != null) {
+                if (!(ti.getBegintime().compareTo(beginDate) <= 0 && ti.getEndtime().compareTo(endDate) >= 0)) {
+                    return false;
+                }
+            } else {
+                if (ti.getBegintime().compareTo(beginDate) > 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }
 

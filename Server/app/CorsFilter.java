@@ -20,7 +20,6 @@ class SecurityFilter implements EssentialFilter {
 
     @Override
     public EssentialAction apply(EssentialAction next) {
-        System.out.println("Hey");
         return next;
     }
 }
@@ -35,7 +34,6 @@ class Filters implements HttpFilters {
     }
 
     public EssentialFilter[] filters() {
-        System.out.println("Hello filter");
         return new CORSFilter[]{corsFilter};
     }
 }

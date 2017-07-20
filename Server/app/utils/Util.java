@@ -1,5 +1,6 @@
 package utils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import models.*;
 import org.hibernate.*;
 import org.hibernate.transform.Transformers;
@@ -14,6 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Util {
+    /**
+     * @param cityName
+     * @param provinceName
+     * @param countryName
+     * @return
+     */
     public static int createOrGetLocation(String cityName, String provinceName, String countryName) {
         City city;
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
@@ -100,6 +107,11 @@ public class Util {
         return createOrGetLocation(cityName, provinceName, countryName);
     }
 
+    /**
+     * @param session
+     * @param eventId
+     * @return
+     */
     public static List<Media> getEventMedia(Session session, int eventId) {
         List<Eventmedia> em = session.createQuery("from Eventmedia where eventid = " + eventId).list();
 
@@ -107,10 +119,13 @@ public class Util {
         for (Eventmedia eventmedia : em) {
             mediaList.addAll(session.createQuery("from Media where postid = " + eventmedia.getMediaid()).list());
         }
-        System.out.println(Json.toJson(mediaList));
         return mediaList;
     }
 
+    /**
+     * @param dates date or dates to save as a Time and Timeinterval or Singletime.
+     * @return id of Time entity created
+     */
     public static int getOrCreateTime(Date[] dates) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
@@ -131,9 +146,10 @@ public class Util {
                 session.close();
                 return ti.getTimeid();
             } else {
+                int timeintervalid = ((Timeinterval) query.list().get(0)).getTimeid();
                 session.close();
                 System.out.println("Return existing timeinterval");
-                return ((Timeinterval) query.list().get(0)).getTimeid();
+                return timeintervalid;
             }
         } else {
             // Single time
@@ -159,6 +175,10 @@ public class Util {
         }
     }
 
+    /**
+     * @param dateToParse String in format "yyyy-mm-dd" to convert to Date object
+     * @return a sql.Date object
+     */
     public static Date parseDateFromString(String dateToParse) {
         try {
             SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yyyy");
@@ -169,6 +189,10 @@ public class Util {
         return null;
     }
 
+    /**
+     * @param id: entity whose Dates need to be retrieved
+     * @return date(s) of entity. Array of length 1 if entity is associated to a Singletime, length 2 if Timeinterval
+     */
     public static Date[] getDates(int id) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", id).list().get(0);
@@ -191,5 +215,123 @@ public class Util {
 
         session.close();
         return null;
+    }
+
+    /**
+     * @param entityId    : Entity whose visibility is set
+     * @param visibility: Unaltered JsonNode containing ids of groups and people to include / exclude
+     * @return
+     */
+    public static boolean setVisibilityToEntity(int entityId, JsonNode visibility) {
+        System.out.println(visibility);
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Timedentity entity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", entityId).list().get(0);
+        if (visibility.has("visibility")) {
+            if (visibility.get("visibility").asText().equals("private")) {
+                entity.setVisibility(1);
+                session.getTransaction().begin();
+                session.saveOrUpdate(entity);
+                session.getTransaction().commit();
+            } else if (visibility.get("visibility").asText().equals("public")) {
+                entity.setVisibility(0);
+                session.getTransaction().begin();
+                session.saveOrUpdate(entity);
+                session.getTransaction().commit();
+            } else if (visibility.get("visibility").asText().equals("limited")) {
+
+                entity.setVisibility(2);
+                JsonNode included = visibility.get("included");
+                JsonNode excluded = visibility.get("excluded");
+
+                session.getTransaction().begin();
+
+                if (included.has("groups")) {
+                    for (int i = 0; i < included.get("groups").size(); i++) {
+                        int groupId = included.get("groups").get(i).asInt();
+
+                        Access access = new Access();
+                        access.setTimedentityid(entityId);
+                        session.save(access);
+
+                        Groupaccess groupaccess = new Groupaccess();
+                        groupaccess.setAccessid(access.getId());
+                        groupaccess.setGroupid(groupId);
+                        session.save(groupaccess);
+
+                        Visibleby visibleby = new Visibleby();
+                        visibleby.setAccessid(access.getId());
+                        visibleby.setTimedentityid(entityId);
+                        session.save(visibleby);
+                    }
+                }
+                if (included.has("people")) {
+                    for (int i = 0; i < included.get("people").size(); i++) {
+                        int profileId = included.get("people").get(i).asInt();
+
+                        Access access = new Access();
+                        access.setTimedentityid(entityId);
+                        session.save(access);
+
+                        Profileaccess profileaccess = new Profileaccess();
+                        profileaccess.setAccessid(access.getId());
+                        profileaccess.setProfileid(profileId);
+                        session.save(profileaccess);
+
+                        Visibleby visibleby = new Visibleby();
+                        visibleby.setAccessid(access.getId());
+                        visibleby.setTimedentityid(entityId);
+                        session.save(visibleby);
+                    }
+                }
+                if (excluded.has("groups")) {
+                    for (int i = 0; i < excluded.get("groups").size(); i++) {
+                        int groupId = excluded.get("groups").get(i).asInt();
+
+                        Access access = new Access();
+                        access.setTimedentityid(entityId);
+                        session.save(access);
+
+                        Groupaccess groupaccess = new Groupaccess();
+                        groupaccess.setAccessid(access.getId());
+                        groupaccess.setGroupid(groupId);
+                        session.save(groupaccess);
+
+                        Notvisibleby notvisibleby = new Notvisibleby();
+                        notvisibleby.setAccessid(access.getId());
+                        notvisibleby.setTimedentityid(entityId);
+                        session.save(notvisibleby);
+                    }
+                }
+                if (excluded.has("people")) {
+                    for (int i = 0; i < excluded.get("groups").size(); i++) {
+                        int profileId = excluded.get("groups").get(i).asInt();
+
+                        Access access = new Access();
+                        access.setTimedentityid(entityId);
+                        session.save(access);
+
+                        Profileaccess profileaccess = new Profileaccess();
+                        profileaccess.setAccessid(access.getId());
+                        profileaccess.setProfileid(profileId);
+                        session.save(profileaccess);
+
+                        Notvisibleby notvisibleby = new Notvisibleby();
+                        notvisibleby.setAccessid(access.getId());
+                        notvisibleby.setTimedentityid(entityId);
+                        session.save(notvisibleby);
+                    }
+                }
+                session.save(entity);
+                session.getTransaction().commit();
+
+
+            } else {
+                session.close();
+                return false;
+            }
+        }
+
+        session.close();
+        return true;
     }
 }

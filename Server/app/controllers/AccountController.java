@@ -40,7 +40,6 @@ public class AccountController extends Controller {
         boolean claiming;
         claiming = session.createQuery("from Ghost where profileid = :profileid").setParameter("profileid", profileId).list().size() > 0;
         if (claiming) {
-            System.out.println("Claiming");
             session.createQuery("delete from Ghost where profileid = :profileid").setParameter("profileid", profileId).executeUpdate();
         }
         session.close();

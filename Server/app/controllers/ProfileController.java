@@ -30,7 +30,6 @@ public class ProfileController extends Controller {
     public Result createProfile() {
 
         JsonNode jsonNode = request().body().asJson();
-        System.out.println(jsonNode);
         // Extract values from request body
 
         Integer gender = jsonNode.get("gender").asInt();
@@ -71,7 +70,6 @@ public class ProfileController extends Controller {
                 deathDayDate = new Date(sdf1.parse(deathDay).getTime());
             }
         } catch (ParseException e) {
-            System.out.println("Exception while parsing date: " + e.getMessage());
         }
 
         // Born locatedevent
@@ -179,16 +177,9 @@ public class ProfileController extends Controller {
                 profilePicturePath = "https://maxcdn.icons8.com/Share/icon/Alphabet//question_mark1600.png";
             }
         }
-        Time profilePictureTime = new Time();
-        session.save(profilePictureTime);
-
-        Singletime profilePictureSingleTime = new Singletime();
-        profilePictureSingleTime.setTimeid(profilePictureTime.getId());
-        profilePictureSingleTime.setTime(new java.sql.Date(System.currentTimeMillis()));
-        session.save(profilePictureSingleTime);
 
         Timedentity profilePictureTimedEntity = new Timedentity();
-        profilePictureTimedEntity.setTimeid(profilePictureTime.getId());
+        profilePictureTimedEntity.setTimeid(Util.getOrCreateTime(new Date[]{new Date(System.currentTimeMillis())}));
         session.save(profilePictureTimedEntity);
 
         Post profilePicturePost = new Post();
@@ -226,6 +217,14 @@ public class ProfileController extends Controller {
         profileOwner.setTimedentityid(profileTimedEntity.getId());
         profileOwner.setPeopleorrelationshipid(profile.getPeopleentityid());
         session.save(profileOwner);
+
+        if (jsonNode.has("visibility")) {
+            if (!Util.setVisibilityToEntity(profile.getPeopleentityid(), jsonNode.get("visibility"))) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest();
+            }
+        }
 
         session.getTransaction().commit();
 
@@ -289,7 +288,6 @@ public class ProfileController extends Controller {
             return ok();
         }
         String contentType = formFile.getContentType();
-        System.out.println(contentType);
         String fileType = contentType.substring(0, contentType.indexOf("/"));
         String extension = contentType.substring(contentType.indexOf("/") + 1);
         File file = formFile.getFile();
@@ -399,7 +397,6 @@ public class ProfileController extends Controller {
                 Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", diedEvent.getPostid()).list().get(0);
                 Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
                 diedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), new String[]{time.getTime().toString()}, getEventMedia(session, diedEvent.getPostid()));
-                System.out.println(Json.toJson(diedEventResult));
                 for (EventResult er : eventResults) {
                     if (er.id == diedEventResult.id) {
                         eventResults.remove(er);
@@ -455,7 +452,6 @@ public class ProfileController extends Controller {
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
                 LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
-                System.out.println(Json.toJson(locatedEventResult));
                 if (locatedEventResult.id != bornEventResult.id) {
                     if (diedEventResult == null || diedEventResult.id != locatedEventResult.id) {
                         eventResults.add(locatedEventResult);
@@ -488,7 +484,6 @@ public class ProfileController extends Controller {
 
                     Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
                     WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, workevent.getEventid()));
-                    System.out.println(Json.toJson(workEventResult));
                     eventResults.add(workEventResult);
                 }
                 if (!subEvent) {
@@ -515,7 +510,6 @@ public class ProfileController extends Controller {
                         LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
                         MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
-                        System.out.println(Json.toJson(moveEventResult));
                         eventResults.add(moveEventResult);
                     }
                 }
@@ -533,8 +527,6 @@ public class ProfileController extends Controller {
         fullProfile.born = bornEventResult;
         fullProfile.died = diedEventResult;
         session.close();
-        System.out.println("RETURNING");
-        System.out.println(Json.toJson(fullProfile));
         return ok(Json.toJson(fullProfile));
     }
 
@@ -550,12 +542,9 @@ public class ProfileController extends Controller {
 
 
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        System.out.println("ownerId: " + ownerId);
-        System.out.println("TEID: " + timedEntityId);
         Query query = session.createQuery("from Ghost where profileid = :timedEntityId and owner = :ownerId")
                 .setParameter("timedEntityId", timedEntityId)
                 .setParameter("ownerId", ownerId);
-        System.out.println(Json.toJson(query.list()));
         if (query.list().size() == 0) {
             session.close();
             return ok(Json.toJson(false));
@@ -575,7 +564,6 @@ public class ProfileController extends Controller {
         profile = (Profile) query.list().get(0);
 
         JsonNode jsonNode = request().body().asJson();
-        System.out.println(jsonNode);
         if (jsonNode.has("firstname")) {
             profile.setFirstname(jsonNode.get("firstname").asText());
         }
@@ -591,15 +579,12 @@ public class ProfileController extends Controller {
         }
 
         if (jsonNode.has("birthDay")) {
-            System.out.println("New birthday");
             Timedentity birthDay = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", profile.getBorn()).list().get(0);
             int newTimeId = Util.getOrCreateTime(new Date[]{Util.parseDateFromString(jsonNode.get("birthDay").asText())});
             birthDay.setTimeid(newTimeId);
             session.save(birthDay);
         }
         if (jsonNode.has("born")) {
-            System.out.println("new born");
-            System.out.println(jsonNode.get("born"));
             Event bornEvent = (Event) session.createQuery("from Event where postid = :id").setParameter("id", profile.getBorn()).list().get(0);
             bornEvent.setDescription(jsonNode.get("born").get("description").asText());
             session.save(bornEvent);
@@ -635,7 +620,6 @@ public class ProfileController extends Controller {
             } else {
                 // Update date if necessary
                 if (jsonNode.has("deathDay")) {
-                    System.out.println("New deathday");
                     Timedentity deathDay = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", profile.getDied()).list().get(0);
 
                     deathDay.setTimeid(Util.getOrCreateTime(new Date[]{Util.parseDateFromString(jsonNode.get("deathDay").asText())}));
@@ -643,7 +627,6 @@ public class ProfileController extends Controller {
                 }
                 // Update event if necessary
                 if (jsonNode.has("died")) {
-                    System.out.println(jsonNode.get("died"));
                     Event diedEvent = (Event) session.createQuery("from Event where postid = :id").setParameter("id", profile.getDied()).list().get(0);
                     diedEvent.setDescription(jsonNode.get("died").get("description").asText());
                     session.save(diedEvent);

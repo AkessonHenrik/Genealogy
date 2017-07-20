@@ -43,3 +43,5 @@ PATCH         /profile/:id            @controllers.ProfileController.updateProfi
 DELETE        /profile/:id            @controllers.ProfileController.delete(id: Integer)
 
 POST          /group                  @controllers.GroupController.createGroup
+
+GET           /owned/groups/:id        @controllers.GroupController.getOwnedGroups(id: Integer)

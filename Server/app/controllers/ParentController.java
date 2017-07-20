@@ -7,6 +7,7 @@ import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
 import utils.SessionHandler;
+import utils.Util;
 
 import java.sql.Date;
 import java.text.ParseException;
@@ -98,7 +99,13 @@ public class ParentController extends Controller {
         }
         session.save(parent);
 
-        // Return parent
+        if (jsonNode.has("visibility")) {
+            if (!Util.setVisibilityToEntity(parent.getTimedentityid(), jsonNode.get("visibility"))) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest();
+            }
+        }
 
         session.getTransaction().commit();
         session.close();
@@ -109,7 +116,6 @@ public class ParentController extends Controller {
 
         List<Singletime> times = session.createQuery("from Singletime where time = '" + date.toString() + "'").list();
         if (times.size() == 0) {
-            System.out.println("No times");
             return -1;
         }
         return times.get(0).getTimeid();
@@ -119,7 +125,6 @@ public class ParentController extends Controller {
 
         List<Timeinterval> times = session.createQuery("from Timeinterval where begintime = '" + begin.toString() + "' and endtime = '" + end.toString() + "'").list();
         if (times.size() == 0) {
-            System.out.println("No Times");
             return -1;
         }
         return times.get(0).getTimeid();

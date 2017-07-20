@@ -10,7 +10,7 @@ import java.io.Serializable;
 public class Timedentity {
     private Integer id;
     private int timeid;
-    private Integer visibility;
+    private Integer visibility = 0;
 
     @Id
     @Column(name = "id")
