@@ -303,8 +303,8 @@ public class Util {
                     }
                 }
                 if (excluded.has("people")) {
-                    for (int i = 0; i < excluded.get("groups").size(); i++) {
-                        int profileId = excluded.get("groups").get(i).asInt();
+                    for (int i = 0; i < excluded.get("people").size(); i++) {
+                        int profileId = excluded.get("people").get(i).asInt();
 
                         Access access = new Access();
                         access.setTimedentityid(entityId);
@@ -333,5 +333,190 @@ public class Util {
 
         session.close();
         return true;
+    }
+
+
+    public static boolean isAllowedToSeeEntity(int requesterId, int timedEntityId) throws Exception {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        Query query = session.createQuery("from Timedentity where id = :id").setParameter("id", timedEntityId);
+        Timedentity timedentity;
+        if (query.list().size() == 0) {
+            throw new Exception("Invalid parameters");
+        }
+        timedentity = (Timedentity) query.list().get(0);
+        if (timedentity.getVisibility() == 0) {
+            // Public
+            session.close();
+            return true;
+        } else if (timedentity.getVisibility() == 1) {
+            // Private
+            // Is requester owner of the entity?
+            query = session.createQuery("from Timedentityowner where timedentityid = :id and peopleorrelationshipid = :requesterId").setParameter("id", timedEntityId).setParameter("requesterId", requesterId);
+            if (query.list().size() > 0) {
+                session.close();
+                return true;
+            }
+            // Is requester the entity?
+            if (timedentity.getId() == requesterId) {
+                return true;
+            }
+
+            // Is requester the account associated to the owner of the entity?
+            int ownerOfEntity = ((Timedentityowner) session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list().get(0)).getPeopleorrelationshipid();
+
+            query = session.createQuery("from Ghost where profileid = :id").setParameter("id", ownerOfEntity);
+            if (query.list().size() > 0) {
+                Ghost ghost = (Ghost) query.list().get(0);
+                if (ghost.getOwner() == requesterId) {
+                    session.close();
+                    return true;
+                }
+            }
+
+            // Is requester tagged ?
+
+
+        } else {
+            // Limited
+
+            // Is requester owner of the entity?
+            query = session.createQuery("from Timedentityowner where timedentityid = :id and peopleorrelationshipid = :requesterId").setParameter("id", timedEntityId).setParameter("requesterId", requesterId);
+            if (query.list().size() > 0) {
+                session.close();
+                return true;
+            }
+            // Is requester the entity?
+            if (timedentity.getId() == requesterId) {
+                return true;
+            }
+
+            // Is requester the account associated to the owner of the entity?
+            int ownerOfEntity = ((Timedentityowner) session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list().get(0)).getPeopleorrelationshipid();
+
+            query = session.createQuery("from Ghost where profileid = :id").setParameter("id", ownerOfEntity);
+            if (query.list().size() > 0) {
+                Ghost ghost = (Ghost) query.list().get(0);
+                if (ghost.getOwner() == requesterId) {
+                    session.close();
+                    return true;
+                }
+            }
+
+            // Is requester tagged ?
+
+
+            // Check access
+            boolean isAllowed = false;
+            query = session.createQuery("from Visibleby where timedentityid = :id").setParameter("id", timedEntityId);
+            List<Visibleby> visibleby = query.list();
+            if (visibleby.size() > 0) { // Only some can see the entity
+                for (Visibleby v : visibleby) {
+                    // group or person?
+                    /**
+                     * Check if requester is a member of groups if there are some
+                     */
+                    // Group
+                    List<Groupaccess> groupaccesses = session.createQuery("from Groupaccess where accessid = :accessid").setParameter("accessid", v.getAccessid()).list();
+                    for (Groupaccess groupaccess : groupaccesses) {
+                        Group group = (Group) session.createQuery("from Group where id = :groupid").setParameter("groupid", groupaccess.getGroupid()).list().get(0);
+                        List<Grouppeople> grouppeople = session.createQuery("from Grouppeople where groupid = :groupid").setParameter("groupid", group.getId()).list();
+                        for (Grouppeople groupperson : grouppeople) {
+                            if (groupperson.getProfileid() == requesterId) {
+                                isAllowed = true;
+                            } else {
+                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", groupperson.getProfileid());
+                                if (query.list().size() > 0) { // Group person is a ghost
+                                    if (((Ghost) query.list().get(0)).getOwner() == requesterId) {
+                                        isAllowed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (!isAllowed) {
+                        /**
+                         * Check if requester is an individual profileaccess
+                         */
+                        // Person
+                        List<Profileaccess> profileaccesses = session.createQuery("from Profileaccess where accessid = :accessid").setParameter("accessid", v.getAccessid()).list();
+                        for (Profileaccess profileaccess : profileaccesses) {
+                            if (profileaccess.getProfileid() == requesterId) {
+                                isAllowed = true;
+                            } else {
+                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", profileaccess.getProfileid());
+                                if (query.list().size() > 0) { // Group person is a ghost
+                                    if (((Ghost) query.list().get(0)).getOwner() == requesterId) {
+                                        isAllowed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Anyone but the notVisibleBy are allowed to see
+                isAllowed = true;
+            }
+
+            query = session.createQuery("from Notvisibleby where timedentityid = :id").setParameter("id", timedEntityId);
+            List<Notvisibleby> notvisiblebylist = query.list();
+            if (notvisiblebylist.size() > 0) { // Some cannot see the entity
+                for (Notvisibleby notvisibleby : notvisiblebylist) {
+                    // group or person?
+                    /**
+                     * Check if requester is a member of groups if there are some
+                     */
+                    // Group
+                    List<Groupaccess> groupaccesses = session.createQuery("from Groupaccess where accessid = :accessid").setParameter("accessid", notvisibleby.getAccessid()).list();
+                    for (Groupaccess groupaccess : groupaccesses) {
+                        Group group = (Group) session.createQuery("from Group where id = :groupid").setParameter("groupid", groupaccess.getGroupid()).list().get(0);
+                        List<Grouppeople> grouppeople = session.createQuery("from Grouppeople where groupid = :groupid").setParameter("groupid", group.getId()).list();
+                        for (Grouppeople groupperson : grouppeople) {
+                            if (groupperson.getProfileid() == requesterId) {
+                                isAllowed = false;
+                            }
+//                            else {
+//                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", groupperson.getProfileid());
+//                                if (query.list().size() > 0) { // Group person is a ghost
+//                                    if (((Ghost) query.list().get(0)).getOwner() == requesterId) {
+//                                        isAllowed = false;
+//                                    }
+//                                }
+//                            }
+                        }
+                    }
+                    if (!isAllowed) {
+                        /**
+                         * Check if requester is an individual profileaccess
+                         */
+                        // Person
+                        List<Profileaccess> profileaccesses = session.createQuery("from Profileaccess where accessid = :accessid").setParameter("accessid", notvisibleby.getAccessid()).list();
+                        for (Profileaccess profileaccess : profileaccesses) {
+                            if (profileaccess.getProfileid() == requesterId) {
+                                isAllowed = false;
+                            }
+//                            else {
+//                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", profileaccess.getProfileid());
+//                                if (query.list().size() > 0) { // Group person is a ghost
+//                                    if (((Ghost) query.list().get(0)).getOwner() == requesterId) {
+//                                        isAllowed = false;
+//                                    }
+//                                }
+//                            }
+                        }
+                    }
+                }
+            }
+
+
+            if (isAllowed) {
+                session.close();
+                return true;
+            }
+        }
+
+        session.close();
+        return false;
     }
 }

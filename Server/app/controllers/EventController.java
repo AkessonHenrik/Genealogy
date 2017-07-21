@@ -7,6 +7,7 @@ import org.hibernate.Session;
 import play.db.jpa.Transactional;
 import play.libs.Json;
 import play.mvc.Result;
+import play.mvc.Results;
 import returnTypes.EventResult;
 import returnTypes.LocatedEventResult;
 import returnTypes.LocationResult;
@@ -230,6 +231,19 @@ public class EventController {
             EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), times, getEventMedia(session, event.getPostid()));
 
             session.close();
+            try {
+                if (!request().hasHeader("requester")) {
+                    return badRequest("No requester header specified");
+                }
+                int requester = Integer.parseInt(request().getHeader("requester"));
+                System.out.println("Requester = " + requester);
+                if (Util.isAllowedToSeeEntity(requester, event.getPostid()))
+                    return ok(Json.toJson(eventResult));
+                else
+                    return Results.forbidden();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             return ok(Json.toJson(eventResult));
         } else {
             return notFound();
