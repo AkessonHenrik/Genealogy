@@ -3,45 +3,45 @@
 # ~~~~
 
 # Home page
-POST          /signup                 @controllers.AccountController.addAccount
+POST          /signup                  @controllers.AccountController.addAccount
 
-POST          /auth                   @controllers.AccountController.login
+POST          /auth                    @controllers.AccountController.login
 
-POST          /profile                @controllers.ProfileController.createProfile
+POST          /profile                 @controllers.ProfileController.createProfile
 
-GET           /family/:id             @controllers.RelationshipController.getFamily(id: Integer)
+GET           /family/:id              @controllers.RelationshipController.getFamily(id: Integer)
 
-POST          /relationships          @controllers.RelationshipController.createRelationship
+POST          /relationships           @controllers.RelationshipController.createRelationship
 
-POST          /parents                @controllers.ParentController.addParent
+POST          /parents                 @controllers.ParentController.addParent
 
-POST          /ghost                  @controllers.ProfileController.addGhost
+POST          /ghost                   @controllers.ProfileController.addGhost
 
-POST          /upload                 @controllers.ProfileController.upload
+POST          /upload                  @controllers.ProfileController.upload
 
-GET           /owned/:id              @controllers.ProfileController.getOwnedProfiles(id: Integer)
-POST          /owned                  @controllers.ProfileController.isOwned
+GET           /owned/:id               @controllers.ProfileController.getOwnedProfiles(id: Integer)
+POST          /owned                   @controllers.ProfileController.isOwned
 
 
-GET           /event/:id              @controllers.EventController.getEvent(id: Integer)
+GET           /event/:id               @controllers.EventController.getEvent(id: Integer)
 # Map static resources from the /public folder to the /assets URL path
-GET           /assets/*file           controllers.Assets.at(path="/public", file)
+GET           /assets/*file            controllers.Assets.at(path="/public", file)
 
-GET           /profile/:id            @controllers.ProfileController.getProfile(id: Integer)
+GET           /profile/:id             @controllers.ProfileController.getProfile(id: Integer)
 
-POST          /event                  @controllers.EventController.addEvent
-
-
-POST          /search                 @controllers.SearchController.search
+POST          /event                   @controllers.EventController.addEvent
 
 
-GET           /comment/:postid        @controllers.CommentController.getComments(postid: Integer)
-POST          /comment                @controllers.CommentController.postComment
+POST          /search                  @controllers.SearchController.search
 
-PATCH         /profile/:id            @controllers.ProfileController.updateProfile(id: Integer)
 
-DELETE        /profile/:id            @controllers.ProfileController.delete(id: Integer)
+GET           /comment/:postid         @controllers.CommentController.getComments(postid: Integer)
+POST          /comment                 @controllers.CommentController.postComment
 
-POST          /group                  @controllers.GroupController.createGroup
+PATCH         /profile/:id             @controllers.ProfileController.updateProfile(id: Integer)
+
+DELETE        /profile/:id             @controllers.ProfileController.delete(id: Integer)
+
+POST          /group                   @controllers.GroupController.createGroup
 
 GET           /owned/groups/:id        @controllers.GroupController.getOwnedGroups(id: Integer)

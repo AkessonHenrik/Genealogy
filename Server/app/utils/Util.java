@@ -229,14 +229,10 @@ public class Util {
         if (visibility.has("visibility")) {
             if (visibility.get("visibility").asText().equals("private")) {
                 entity.setVisibility(1);
-                session.getTransaction().begin();
                 session.saveOrUpdate(entity);
-                session.getTransaction().commit();
             } else if (visibility.get("visibility").asText().equals("public")) {
                 entity.setVisibility(0);
-                session.getTransaction().begin();
                 session.saveOrUpdate(entity);
-                session.getTransaction().commit();
             } else if (visibility.get("visibility").asText().equals("limited")) {
 
                 entity.setVisibility(2);
@@ -336,7 +332,130 @@ public class Util {
     }
 
 
-    public static boolean isAllowedToSeeEntity(int requesterId, int timedEntityId) throws Exception {
+    public static boolean setVisibilityToEntity2(int entityId, JsonNode visibility, Session session) {
+        System.out.println(visibility);
+//        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Timedentity entity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", entityId).list().get(0);
+        if (visibility.has("visibility")) {
+            if (visibility.get("visibility").asText().equals("private")) {
+                entity.setVisibility(1);
+                session.getTransaction().begin();
+                session.saveOrUpdate(entity);
+//                session.getTransaction().commit();
+            } else if (visibility.get("visibility").asText().equals("public")) {
+                entity.setVisibility(0);
+                session.getTransaction().begin();
+                session.saveOrUpdate(entity);
+//                session.getTransaction().commit();
+            } else if (visibility.get("visibility").asText().equals("limited")) {
+
+                entity.setVisibility(2);
+
+                JsonNode included = null;
+                if (visibility.has("included")) {
+                    included = visibility.get("included");
+                }
+                JsonNode excluded = null;
+                if (visibility.has("excluded")) {
+                    excluded = visibility.get("excluded");
+                }
+
+                if (excluded == null && included == null) {
+                    return false;
+                }
+
+                if(included != null) {
+                    if (included.has("groups")) {
+                        for (int i = 0; i < included.get("groups").size(); i++) {
+                            int groupId = included.get("groups").get(i).asInt();
+
+                            Access access = new Access();
+                            access.setTimedentityid(entityId);
+                            session.save(access);
+
+                            Groupaccess groupaccess = new Groupaccess();
+                            groupaccess.setAccessid(access.getId());
+                            groupaccess.setGroupid(groupId);
+                            session.save(groupaccess);
+
+                            Visibleby visibleby = new Visibleby();
+                            visibleby.setAccessid(access.getId());
+                            visibleby.setTimedentityid(entityId);
+                            session.save(visibleby);
+                        }
+                    }
+                    if (included.has("people")) {
+                        for (int i = 0; i < included.get("people").size(); i++) {
+                            int profileId = included.get("people").get(i).asInt();
+
+                            Access access = new Access();
+                            access.setTimedentityid(entityId);
+                            session.save(access);
+
+                            Profileaccess profileaccess = new Profileaccess();
+                            profileaccess.setAccessid(access.getId());
+                            profileaccess.setProfileid(profileId);
+                            session.save(profileaccess);
+
+                            Visibleby visibleby = new Visibleby();
+                            visibleby.setAccessid(access.getId());
+                            visibleby.setTimedentityid(entityId);
+                            session.save(visibleby);
+                        }
+                    }
+                }
+                if(excluded != null) {
+                    if (excluded.has("groups")) {
+                        for (int i = 0; i < excluded.get("groups").size(); i++) {
+                            int groupId = excluded.get("groups").get(i).asInt();
+
+                            Access access = new Access();
+                            access.setTimedentityid(entityId);
+                            session.save(access);
+
+                            Groupaccess groupaccess = new Groupaccess();
+                            groupaccess.setAccessid(access.getId());
+                            groupaccess.setGroupid(groupId);
+                            session.save(groupaccess);
+
+                            Notvisibleby notvisibleby = new Notvisibleby();
+                            notvisibleby.setAccessid(access.getId());
+                            notvisibleby.setTimedentityid(entityId);
+                            session.save(notvisibleby);
+                        }
+                    }
+                    if (excluded.has("people")) {
+                        for (int i = 0; i < excluded.get("people").size(); i++) {
+                            int profileId = excluded.get("people").get(i).asInt();
+
+                            Access access = new Access();
+                            access.setTimedentityid(entityId);
+                            session.save(access);
+
+                            Profileaccess profileaccess = new Profileaccess();
+                            profileaccess.setAccessid(access.getId());
+                            profileaccess.setProfileid(profileId);
+                            session.save(profileaccess);
+
+                            Notvisibleby notvisibleby = new Notvisibleby();
+                            notvisibleby.setAccessid(access.getId());
+                            notvisibleby.setTimedentityid(entityId);
+                            session.save(notvisibleby);
+                        }
+                    }
+                }
+                session.save(entity);
+
+
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    public static boolean isAllowedToSeeEntity(Integer requesterId, int timedEntityId) throws Exception {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
         Query query = session.createQuery("from Timedentity where id = :id").setParameter("id", timedEntityId);
@@ -350,6 +469,10 @@ public class Util {
             session.close();
             return true;
         } else if (timedentity.getVisibility() == 1) {
+            if (requesterId == null) {
+                session.close();
+                return false;
+            }
             // Private
             // Is requester owner of the entity?
             query = session.createQuery("from Timedentityowner where timedentityid = :id and peopleorrelationshipid = :requesterId").setParameter("id", timedEntityId).setParameter("requesterId", requesterId);
@@ -359,12 +482,13 @@ public class Util {
             }
             // Is requester the entity?
             if (timedentity.getId() == requesterId) {
+                session.close();
                 return true;
             }
 
             // Is requester the account associated to the owner of the entity?
             int ownerOfEntity = ((Timedentityowner) session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list().get(0)).getPeopleorrelationshipid();
-
+            System.out.println("Owner: " + ownerOfEntity);
             query = session.createQuery("from Ghost where profileid = :id").setParameter("id", ownerOfEntity);
             if (query.list().size() > 0) {
                 Ghost ghost = (Ghost) query.list().get(0);
@@ -372,6 +496,22 @@ public class Util {
                     session.close();
                     return true;
                 }
+            } else { // is owner a relationship?
+                if (session.createQuery("from Relationship where id = :id").setParameter("id", ownerOfEntity).list().size() > 0) {
+                    // Owner is a relationship
+                    // Is at least one of the people of the relationship owned by requester?
+                    // 1: profile1 or profile2 is requester
+                    if (session.createQuery("from Relationship where peopleentityid = :id and profile1 = :p1 or profile2 = :p2").setParameter("id", ownerOfEntity).setParameter("p1", requesterId).setParameter("p2", requesterId).list().size() > 0) {
+                        session.close();
+                        return true;
+                    }
+                    Relationship rel = (Relationship) session.createQuery("from Relationship where peopleentityid = :id").setParameter("id", ownerOfEntity).list().get(0);
+                    if (session.createQuery("from Account a inner join Ghost g on g.owner = a.profileid where a.id = :req and (g.profileid = :p1 or g.profileid = :p2)").setParameter("req", requesterId).setParameter("p1", rel.getProfile1()).setParameter("p2", rel.getProfile2()).list().size() > 0) {
+                        session.close();
+                        return true;
+                    }
+                }
+
             }
 
             // Is requester tagged ?
@@ -379,6 +519,16 @@ public class Util {
 
         } else {
             // Limited
+            if (requesterId == null) {
+                return false;
+            }
+
+            // A limited visibility is by definition forbidden to non registered users
+            // Check if requesterId is a profile
+            if (session.createQuery("from Profile where peopleentityid = :id").setParameter("id", requesterId).list().size() == 0) {
+                session.close();
+                return false;
+            }
 
             // Is requester owner of the entity?
             query = session.createQuery("from Timedentityowner where timedentityid = :id and peopleorrelationshipid = :requesterId").setParameter("id", timedEntityId).setParameter("requesterId", requesterId);
@@ -388,6 +538,7 @@ public class Util {
             }
             // Is requester the entity?
             if (timedentity.getId() == requesterId) {
+                session.close();
                 return true;
             }
 
@@ -486,16 +637,17 @@ public class Util {
 //                            }
                         }
                     }
-                    if (!isAllowed) {
-                        /**
-                         * Check if requester is an individual profileaccess
-                         */
-                        // Person
-                        List<Profileaccess> profileaccesses = session.createQuery("from Profileaccess where accessid = :accessid").setParameter("accessid", notvisibleby.getAccessid()).list();
-                        for (Profileaccess profileaccess : profileaccesses) {
-                            if (profileaccess.getProfileid() == requesterId) {
-                                isAllowed = false;
-                            }
+                    /**
+                     * Check if requester is an individual profileaccess
+                     */
+                    // Person
+                    List<Profileaccess> profileaccesses = session.createQuery("from Profileaccess where accessid = :accessid").setParameter("accessid", notvisibleby.getAccessid()).list();
+                    for (Profileaccess profileaccess : profileaccesses) {
+                        System.out.println("Requester: " + requesterId);
+                        System.out.println(profileaccess.getProfileid());
+                        if (profileaccess.getProfileid() == requesterId) {
+                            isAllowed = false;
+                        }
 //                            else {
 //                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", profileaccess.getProfileid());
 //                                if (query.list().size() > 0) { // Group person is a ghost
@@ -504,7 +656,6 @@ public class Util {
 //                                    }
 //                                }
 //                            }
-                        }
                     }
                 }
             }
@@ -519,4 +670,33 @@ public class Util {
         session.close();
         return false;
     }
+
+
+    public static EntityType getTypeOfEntity(int timedentityId) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        if (session.createQuery("from Profile where peopleentityid = :id").setParameter("id", timedentityId).list().size() > 0) {
+            session.close();
+            return EntityType.Profile;
+        }
+        if (session.createQuery("from Relationship where peopleentityid = :id").setParameter("id", timedentityId).list().size() > 0) {
+            session.close();
+            return EntityType.Relationship;
+        }
+        if (session.createQuery("from Parentsof where timedentityid = :id").setParameter("id", timedentityId).list().size() > 0) {
+            session.close();
+            return EntityType.Parent;
+        }
+        if (session.createQuery("from Event where postid = :id").setParameter("id", timedentityId).list().size() > 0) {
+            session.close();
+            return EntityType.Event;
+        }
+        if (session.createQuery("from Media where postid = :id").setParameter("id", timedentityId).list().size() > 0) {
+            session.close();
+            return EntityType.Media;
+        }
+
+        session.close();
+        return null;
+    }
 }
+

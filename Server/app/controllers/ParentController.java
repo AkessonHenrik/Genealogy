@@ -6,6 +6,7 @@ import org.hibernate.Session;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
+import utils.EntityType;
 import utils.SessionHandler;
 import utils.Util;
 
@@ -18,11 +19,15 @@ public class ParentController extends Controller {
     Session session;
 
     public Result addParent() {
+
+        if (!request().hasHeader("requester")) {
+            return forbidden("You need to be logged in to create an entity");
+        }
+        Integer requesterId = Integer.parseInt(request().getHeader("requester"));
         JsonNode jsonNode = request().body().asJson();
         String parentType = jsonNode.get("parentType").asText();
-        int parentId = jsonNode.get("parent").get("id").asInt();
+        int parentId = jsonNode.get("parent").asInt();
         int childId = jsonNode.get("child").asInt();
-        String relOrSingle = jsonNode.get("parent").get("type").asText();
 
 
         SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
@@ -31,6 +36,10 @@ public class ParentController extends Controller {
         Date end = null;
 
         session = SessionHandler.getInstance().getSessionFactory().openSession();
+        if (session.createQuery("from Account where id = :id").setParameter("id", requesterId).list().size() == 0) {
+            session.close();
+            return badRequest("No account associated to id " + requesterId);
+        }
         session.getTransaction().begin();
 
         if (!jsonNode.get("time").get("begin").asText().equals("null")) {
@@ -46,6 +55,7 @@ public class ParentController extends Controller {
             if (parentType.equals("biological")) {
                 begin = (Date) session.createQuery("select st.time from Singletime st inner join Time t on t.id = st.timeid inner join Timedentity te on te.timeid = t.id where te.id = :childid").setParameter("childid", childId).list().get(0);
             } else {
+                session.getTransaction().rollback();
                 session.close();
                 return badRequest("If parent type is not biological, a begin date should be given");
             }
@@ -95,19 +105,57 @@ public class ParentController extends Controller {
         } else if (parentType.equals("guardian")) {
             parent.setParentType(2);
         } else {
+            session.getTransaction().rollback();
+            session.close();
             return badRequest("Invalid parent type\n accepted types are: {\"adoptive\", \"biological\", \"guardian\"");
         }
+
         session.save(parent);
 
-        if (jsonNode.has("visibility")) {
-            if (!Util.setVisibilityToEntity(parent.getTimedentityid(), jsonNode.get("visibility"))) {
-                session.getTransaction().rollback();
-                session.close();
-                return badRequest();
-            }
+        Timedentityowner owner;
+        // If parent is a relationship, both profiles should be owners
+        if (Util.getTypeOfEntity(parent.getParentsid()) == EntityType.Relationship) {
+            Relationship rel = (Relationship) session.createQuery("from Relationship where peopleentityid = :id").setParameter("id", parent.getParentsid()).list().get(0);
+            owner = new Timedentityowner();
+            owner.setTimedentityid(parent.getTimedentityid());
+            owner.setPeopleorrelationshipid(rel.getProfile1());
+            session.save(owner);
+            owner = new Timedentityowner();
+            owner.setTimedentityid(parent.getTimedentityid());
+            owner.setPeopleorrelationshipid(rel.getProfile2());
+            session.save(owner);
+        } else {
+            // Otherwise, parent is a profile and a Timedentityowner can be created directly
+            // Parents are owners
+            owner = new Timedentityowner();
+            owner.setPeopleorrelationshipid(parent.getParentsid());
+            owner.setTimedentityid(parent.getTimedentityid());
+            session.save(owner);
+        }
+        // Child is owner
+        owner = new Timedentityowner();
+        owner.setPeopleorrelationshipid(parent.getChildid());
+        owner.setTimedentityid(parent.getTimedentityid());
+        session.save(owner);
+
+        // Requester is owner
+        if (session.get(Timedentityowner.class, requesterId) == null) {
+            owner = new Timedentityowner();
+            owner.setPeopleorrelationshipid(requesterId);
+            owner.setTimedentityid(parent.getTimedentityid());
+            session.save(owner);
         }
 
+
+        if (jsonNode.has("visibility")) {
+            if (!Util.setVisibilityToEntity2(parent.getTimedentityid(), jsonNode.get("visibility"), session)) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest("Invalid visibility attributes");
+            }
+        }
         session.getTransaction().commit();
+
         session.close();
         return ok(Json.toJson(parent));
     }

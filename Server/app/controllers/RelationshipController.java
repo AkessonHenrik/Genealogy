@@ -12,6 +12,7 @@ import returnTypes.FinalResult;
 import returnTypes.ParentSearchResult;
 import returnTypes.RelationshipSearchResult;
 import returnTypes.SearchResult;
+import utils.EntityType;
 import utils.SessionHandler;
 import utils.Util;
 
@@ -29,10 +30,20 @@ public class RelationshipController extends Controller {
     @Transactional
     public Result createRelationship() {
         JsonNode jsonNode = request().body().asJson();
+        if (!request().hasHeader("requester")) {
+            return forbidden("You need to be logged in to create relationships");
+        }
+        Integer requesterId = Integer.parseInt(request().getHeader("requester"));
+
+        if (Util.getTypeOfEntity(requesterId) != EntityType.Profile) {
+            return badRequest("Invalid requester");
+        }
+
         int profile1 = jsonNode.get("profile1").asInt();
         int profile2 = jsonNode.get("profile2").asInt();
         String relTypeString = jsonNode.get("type").asText();
         int type = 5;
+        System.out.println(relTypeString);
         switch (relTypeString) {
             case "spouse":
                 type = 0;
@@ -50,12 +61,25 @@ public class RelationshipController extends Controller {
                 type = 4;
                 break;
         }
-
+        System.out.println("Type = " + type);
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        if (session.createQuery("from Account where id = :id").setParameter("id", requesterId).list().size() == 0) {
+            session.close();
+            return badRequest("No account associated to id: " + requesterId);
+        }
         String beginTime = jsonNode.get("time").get("begin").asText();
         String endTime = null;
         if (jsonNode.get("time").has("end")) {
             endTime = jsonNode.get("time").get("end").asText();
+        }
+
+        if (Util.getTypeOfEntity(profile1) != EntityType.Profile) {
+            session.close();
+            return badRequest("Invalid profile 1");
+        }
+        if (Util.getTypeOfEntity(profile2) != EntityType.Profile) {
+            session.close();
+            return badRequest("Invalid profile 2");
         }
 
         Timedentity p1 = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", profile1).list().get(0);
@@ -109,24 +133,51 @@ public class RelationshipController extends Controller {
         session.save(peopleentity);
 
         Relationship relationship = new Relationship();
-        relationship.setId(peopleentity.getTimedentityid());
+        relationship.setPeopleentityid(peopleentity.getTimedentityid());
         relationship.setProfile1(profile1);
         relationship.setProfile2(profile2);
         relationship.setType(type);
         session.save(relationship);
+
+        Timedentityowner relationshipOwner = new Timedentityowner();
+        relationshipOwner.setTimedentityid(relationship.getPeopleentityid());
+        relationshipOwner.setPeopleorrelationshipid(relationship.getProfile1());
+        session.save(relationshipOwner);
+
+        relationshipOwner = new Timedentityowner();
+        relationshipOwner.setTimedentityid(relationship.getPeopleentityid());
+        relationshipOwner.setPeopleorrelationshipid(relationship.getProfile2());
+        session.save(relationshipOwner);
+
+
         if (jsonNode.has("visibility")) {
-            if (!Util.setVisibilityToEntity(relationship.getId(), jsonNode.get("visibility"))) {
+            if (!Util.setVisibilityToEntity2(relationship.getPeopleentityid(), jsonNode.get("visibility"), session)) {
                 session.getTransaction().rollback();
                 session.close();
-                return badRequest();
+                return badRequest("Invalid visibility type");
             }
         }
         session.getTransaction().commit();
+        session.close();
         return ok(Json.toJson(relationship).toString());
     }
 
     @Transactional
     public Result getFamily(Integer id) {
+
+        Integer requester = -1;
+        if (request().hasHeader("requester")) {
+            requester = Integer.parseInt(request().getHeader("requester"));
+        }
+        final Integer requesterId = requester;
+
+        try {
+            if (!Util.isAllowedToSeeEntity(requesterId, id)) {
+                return forbidden();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         session.getTransaction().begin();
@@ -165,6 +216,16 @@ public class RelationshipController extends Controller {
                 "where r.profile1 = " + id + " or r.profile2 = " + id;
 
         List<Object[]> searchrelationships = session.createQuery(queryString).list();
+        searchrelationships.removeIf(rel -> {
+            try {
+                if (!Util.isAllowedToSeeEntity(requesterId, (int) rel[0])) {
+                    return true;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return false;
+        });
         List<RelationshipSearchResult> relationships = new ArrayList<>();
 
 
@@ -191,7 +252,16 @@ public class RelationshipController extends Controller {
         for (Integer otherId : otherIds) {
             String otherquery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + otherId;
             List<Object[]> otherresult = session.createQuery(otherquery).list();
-            results.addAll(SearchResult.createSearchResultPersonFromQueryResult(otherresult));
+            List<SearchResult> searchResults = SearchResult.createSearchResultPersonFromQueryResult(otherresult);
+            for (SearchResult sr : searchResults) {
+                try {
+                    if (Util.isAllowedToSeeEntity(requesterId, sr.id)) {
+                        results.add(sr);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
         results.add(caller);
 
@@ -199,17 +269,44 @@ public class RelationshipController extends Controller {
         List<Parentsof> parents = new ArrayList<>();
         for (RelationshipSearchResult rel : relationships) {
             query = "from Parentsof where parentsid = " + rel.id;
-            parents.addAll(session.createQuery(query).list());
+            List<Parentsof> parentsofs = session.createQuery(query).list();
+            for (Parentsof p : parentsofs) {
+                try {
+                    if (Util.isAllowedToSeeEntity(requesterId, p.getTimedentityid())) {
+                        parents.add(p);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
         // select caller's single children
-        query = "from Parentsof where parentsid = " + id;
-        parents.addAll(session.createQuery(query).list());
+        queryString = "from Parentsof where parentsid = " + id;
+        List<Parentsof> parentsofs = session.createQuery(queryString).list();
+        for (Parentsof p : parentsofs) {
+            try {
+                if (Util.isAllowedToSeeEntity(requesterId, p.getTimedentityid())) {
+                    parents.add(p);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
 
         // Now that we have caller's single children and caller's relationship's children
         // Let's get caller's single parents
-        query = "from Parentsof where childid = " + id;
-        parents.addAll(session.createQuery(query).list());
+        queryString = "from Parentsof where childid = " + id;
+        parentsofs = session.createQuery(queryString).list();
+        for (Parentsof p : parentsofs) {
+            try {
+                if (Util.isAllowedToSeeEntity(requesterId, p.getTimedentityid())) {
+                    parents.add(p);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
 
         // Add children profiles
         for (Parentsof parent : parents) {
@@ -226,8 +323,16 @@ public class RelationshipController extends Controller {
                 for (SearchResult sr : results)
                     if (sr.id == resid)
                         alreadyIn = true;
-                if (!alreadyIn)
-                    results.add(childrenResults);
+                if (!alreadyIn) {
+                    try {
+                        System.out.println("Checking if " + requesterId + " can see " + childrenResults.id);
+                        if (Util.isAllowedToSeeEntity(requesterId, childrenResults.id)) {
+                            results.add(childrenResults);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
 
@@ -255,7 +360,12 @@ public class RelationshipController extends Controller {
                     }
                 }
                 if (!alreadyIn) {
-                    results.add(caller);
+                    try {
+                        if (Util.isAllowedToSeeEntity(requesterId, caller.id))
+                            results.add(caller);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
 
@@ -299,43 +409,78 @@ public class RelationshipController extends Controller {
                 // Get their other children
                 String childrenRelQuery = "from Parentsof where parentsid = " + resId;
                 List<Parentsof> theirChildren = session.createQuery(childrenRelQuery).list();
-                parents.addAll(theirChildren);
-                results.addAll(getPeopleFromParents(theirChildren, session));
+                for (Parentsof p : theirChildren) {
+                    try {
+                        if (Util.isAllowedToSeeEntity(requesterId, p.getTimedentityid())) {
+                            parents.add(p);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                List<SearchResult> res = getPeopleFromParents(theirChildren, session);
+                for (SearchResult sr : res) {
+                    try {
+                        if (Util.isAllowedToSeeEntity(requesterId, sr.id)) {
+                            results.add(sr);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
             }
             for (Integer otherId : otherParentIds) {
                 String otherquery = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + otherId;
                 List<Object[]> otherresult = session.createQuery(otherquery).list();
-                results.addAll(SearchResult.createSearchResultPersonFromQueryResult(otherresult));
+                List<SearchResult> res = SearchResult.createSearchResultPersonFromQueryResult(otherresult);
+                for (SearchResult sr : res) {
+                    try {
+                        if (Util.isAllowedToSeeEntity(requesterId, sr.id)) {
+                            results.add(sr);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
             }
-            results.add(caller);
+            try {
+                if (Util.isAllowedToSeeEntity(requesterId, caller.id))
+                    results.add(caller);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         FinalResult fr = new FinalResult();
-        List<Integer> ids = new ArrayList<>();
+        List<Integer> peopleids = new ArrayList<>();
         results.removeIf(r -> {
-            if (ids.contains(r.id))
+            if (peopleids.contains(r.id))
                 return true;
-            ids.add(r.id);
+            peopleids.add(r.id);
             return false;
         });
         fr.people = results;
-        ids.clear();
+        List<Integer> relationshipIds = new ArrayList<>();
         relationships.removeIf(rel -> {
-            if (ids.contains(rel.id))
+            if (relationshipIds.contains(rel.id))
                 return true;
-            ids.add(rel.id);
+            else if (!peopleids.contains(rel.profile1) || !peopleids.contains(rel.profile2))
+                return true;
+            relationshipIds.add(rel.id);
             return false;
         });
         fr.relationships = relationships;
-        ids.clear();
+        List<Integer> parentsIds = new ArrayList<>();
         List<ParentSearchResult> parentSearchResults = new ArrayList<>();
         for (Parentsof p : parents) {
             parentSearchResults.add(new ParentSearchResult(p));
         }
         parentSearchResults.removeIf(p -> {
-            if (ids.contains(p.timedentityid))
+            if (parentsIds.contains(p.timedentityid))
                 return true;
-            ids.add(p.timedentityid);
+            else if (!peopleids.contains(p.childid) || (!peopleids.contains(p.parentsid) && !relationshipIds.contains(p.parentsid)))
+                return true;
+            parentsIds.add(p.timedentityid);
             return false;
         });
         fr.parents = parentSearchResults;

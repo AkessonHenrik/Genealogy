@@ -29,6 +29,15 @@ public class ProfileController extends Controller {
     @Transactional
     public Result createProfile() {
 
+//        int requester = Integer.parseInt(request().getHeader("requester"));
+//        // Start creating entities
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+//
+//        if (session.createQuery("from Account where id = :id").setParameter("id", requester).list().size() == 0) {
+//            session.close();
+//            return badRequest("Given requester does not match any accounts");
+//        }
+
         JsonNode jsonNode = request().body().asJson();
         // Extract values from request body
 
@@ -40,8 +49,7 @@ public class ProfileController extends Controller {
             deathDay = jsonNode.get("deathDay").asText();
         }
 
-        // Start creating entities
-        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
         session.getTransaction().begin();
 
         // Profile entity
@@ -217,6 +225,7 @@ public class ProfileController extends Controller {
         profileOwner.setTimedentityid(profileTimedEntity.getId());
         profileOwner.setPeopleorrelationshipid(profile.getPeopleentityid());
         session.save(profileOwner);
+        session.getTransaction().commit();
 
         if (jsonNode.has("visibility")) {
             if (!Util.setVisibilityToEntity(profile.getPeopleentityid(), jsonNode.get("visibility"))) {
@@ -226,13 +235,11 @@ public class ProfileController extends Controller {
             }
         }
 
-        session.getTransaction().commit();
-
-        JsonNode newProfile = Json.toJson(profile);
+        SearchResult searchResult = new SearchResult(profile.getPeopleentityid(), profile.getFirstname(), profile.getLastname(), profilePicturePath, profile.getGender());
 
 
         session.close();
-        return ok(newProfile.toString());
+        return ok(Json.toJson(searchResult));
     }
 
     @Transactional
@@ -310,6 +317,21 @@ public class ProfileController extends Controller {
 
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         // Get profile SearchResult and model
+        Timedentity t = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", id).list().get(0);
+
+        if (!request().hasHeader("requester") && t.getVisibility() != 0) {
+            session.close();
+            return badRequest("No requester header specified");
+        }
+        int requesterId = Integer.parseInt(request().getHeader("requester"));
+        try {
+            if (!Util.isAllowedToSeeEntity(requesterId, t.getId())) {
+                session.close();
+                return forbidden();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id).list().get(0);
         String queryString = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id;
         Query query = session.createQuery(queryString);
@@ -454,7 +476,13 @@ public class ProfileController extends Controller {
                 LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
                 if (locatedEventResult.id != bornEventResult.id) {
                     if (diedEventResult == null || diedEventResult.id != locatedEventResult.id) {
-                        eventResults.add(locatedEventResult);
+                        try {
+                            if (Util.isAllowedToSeeEntity(requesterId, locatedevent.getEventid())) {
+                                eventResults.add(locatedEventResult);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
@@ -484,7 +512,13 @@ public class ProfileController extends Controller {
 
                     Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
                     WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, workevent.getEventid()));
-                    eventResults.add(workEventResult);
+                    try {
+                        if (Util.isAllowedToSeeEntity(requesterId, workevent.getEventid())) {
+                            eventResults.add(workEventResult);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
                 if (!subEvent) {
                     // Move event?
@@ -510,14 +544,26 @@ public class ProfileController extends Controller {
                         LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
                         MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
-                        eventResults.add(moveEventResult);
+                        try {
+                            if (Util.isAllowedToSeeEntity(requesterId, moveevent.getEventid())) {
+                                eventResults.add(moveEventResult);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
             // "Normal" event
             if (!subEvent) {
                 EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
-                eventResults.add(eventResult);
+                try {
+                    if (Util.isAllowedToSeeEntity(requesterId, event.getPostid())) {
+                        eventResults.add(eventResult);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             i++;
         }
@@ -539,7 +585,6 @@ public class ProfileController extends Controller {
         if (ownerId == timedEntityId) {
             return ok(Json.toJson(true));
         }
-
 
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Query query = session.createQuery("from Ghost where profileid = :timedEntityId and owner = :ownerId")

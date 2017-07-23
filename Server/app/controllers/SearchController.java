@@ -7,6 +7,7 @@ import play.mvc.Controller;
 import play.mvc.Result;
 import returnTypes.SearchResult;
 import utils.SessionHandler;
+import utils.Util;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -18,6 +19,10 @@ import java.util.List;
 public class SearchController extends Controller {
 
     public Result search() {
+        Integer requesterId = -1;
+        if (request().hasHeader("requester")) {
+            requesterId = Integer.parseInt(request().getHeader("requester"));
+        }
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
         String firstname = request().body().asJson().get("firstname").asText();
@@ -43,7 +48,12 @@ public class SearchController extends Controller {
                     }
                 }
                 if (!alreadyIn) {
-                    results.add(caller);
+                    try {
+                        if (Util.isAllowedToSeeEntity(requesterId, caller.id))
+                            results.add(caller);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
