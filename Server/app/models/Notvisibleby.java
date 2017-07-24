@@ -52,9 +52,7 @@ public class Notvisibleby {
         if (id != that.id) return false;
         if (timedentityid != null ? !timedentityid.equals(that.timedentityid) : that.timedentityid != null)
             return false;
-        if (accessid != null ? !accessid.equals(that.accessid) : that.accessid != null) return false;
-
-        return true;
+        return accessid != null ? accessid.equals(that.accessid) : that.accessid == null;
     }
 
     @Override

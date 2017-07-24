@@ -8,24 +8,17 @@ import play.db.jpa.Transactional;
 import play.libs.Json;
 import play.mvc.Result;
 import play.mvc.Results;
-import returnTypes.EventResult;
-import returnTypes.LocatedEventResult;
-import returnTypes.LocationResult;
-import returnTypes.WorkEventResult;
+import returnTypes.*;
 import utils.SessionHandler;
 import utils.UploadFile;
 import utils.Util;
 
 import java.sql.Date;
-import java.text.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static play.mvc.Controller.request;
-import static play.mvc.Results.badRequest;
-import static play.mvc.Results.notFound;
-import static play.mvc.Results.ok;
-import static utils.Util.getEventMedia;
+import static play.mvc.Results.*;
+import static utils.Util.*;
 
 /**
  * Created by Henrik on 07/07/2017.
@@ -59,20 +52,12 @@ public class EventController {
         session.getTransaction().begin();
 
         // Time
-        Date beginDate = null;
+        Date beginDate;
         Date endDate = null;
 
-        Time time = new Time();
-        session.save(time);
-        SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yyyy");
-
-        try {
-            if (timeInterval)
-                endDate = new Date(sdf1.parse(end).getTime());
-            beginDate = new Date(sdf1.parse(begin).getTime());
-        } catch (ParseException e) {
-            System.out.println("Exception while parsing date: " + e.getMessage());
-        }
+        if (end != null)
+            endDate = Util.parseDateFromString(end);
+        beginDate = Util.parseDateFromString(begin);
         int timeId;
         if (timeInterval)
             timeId = Util.getOrCreateTime(new Date[]{beginDate, endDate});
@@ -114,7 +99,7 @@ public class EventController {
         }
         for (UploadFile uploadFile : media) {
             Timedentity mediaTimedEntity = new Timedentity();
-            mediaTimedEntity.setTimeid(time.getId());
+            mediaTimedEntity.setTimeid(timeId);
             session.save(mediaTimedEntity);
 
             Timedentityowner mediaOwner = new Timedentityowner();
@@ -134,8 +119,11 @@ public class EventController {
                 m.setType(1);
             else if (uploadFile.type.equals("audio"))
                 m.setType(2);
-            else
+            else {
+                session.getTransaction().rollback();
+                session.close();
                 return badRequest();
+            }
             m.setPostid(mediaPost.getTimedentityid());
             session.save(m);
 
@@ -197,6 +185,18 @@ public class EventController {
     }
 
     public Result getEvent(Integer id) {
+
+        Integer requesterId = null;
+        if (request().hasHeader("requester")) {
+            requesterId = Integer.parseInt(request().getHeader("requester"));
+        }
+        try {
+            if (!Util.isAllowedToSeeEntity(requesterId, id)) {
+                return forbidden();
+            }
+        } catch (Exception e) {
+            return notFound();
+        }
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Query query = session.createQuery("from Locatedevent where eventid = :id").setParameter("id", id);
         if (query.list().size() > 0) {
@@ -213,22 +213,23 @@ public class EventController {
             session.close();
             return getMoveEvent(id);
         }
-        Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", id).list().get(0);
-        int teId = timedentity.getTimeid();
-        query = session.createQuery("from Singletime where timeid = :timeid");
-        query.setParameter("timeid", teId);
-        Singletime st = (Singletime) query.list().get(0);
-        String[] times = new String[]{st.getTime().toString()};
 
-        query = session.createQuery("from Timeinterval where timeid = :timeid");
-        query.setParameter("timeid", teId);
-        for (Timeinterval ti : (List<Timeinterval>) query.list()) {
-            times = new String[]{ti.getBegintime().toString(), ti.getEndtime().toString()};
+
+        Timedentity timedentity = session.get(Timedentity.class, id);
+
+        Date[] dates = Util.getDates(timedentity.getId());
+        System.out.println(timedentity.getTimeid());
+        System.out.println(Json.toJson(dates));
+        String[] dateStrings = new String[dates.length];
+        for (int i = 0; i < dateStrings.length; i++) {
+            dateStrings[i] = dates[i].toString();
+            System.out.println("Datestring: " + dateStrings[i]);
         }
+
         query = session.createQuery("from Event where postid = :id").setParameter("id", id);
         if (query.list().size() > 0) {
             Event event = (Event) query.list().get(0);
-            EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), times, getEventMedia(session, event.getPostid()));
+            EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), dateStrings, getEventMedia(session, event.getPostid()));
 
             session.close();
             try {
@@ -236,7 +237,6 @@ public class EventController {
                     return badRequest("No requester header specified");
                 }
                 int requester = Integer.parseInt(request().getHeader("requester"));
-                System.out.println("Requester = " + requester);
                 if (Util.isAllowedToSeeEntity(requester, event.getPostid()))
                     return ok(Json.toJson(eventResult));
                 else
@@ -252,79 +252,290 @@ public class EventController {
 
     private Result getWorkEvent(Integer id) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", id).list().get(0);
-        int teId = timedentity.getTimeid();
-        Query query;
-        query = session.createQuery("from Singletime where timeid = :timeid");
-        query.setParameter("timeid", teId);
-        Singletime st = (Singletime) query.list().get(0);
-        String[] times = new String[]{st.getTime().toString()};
 
-        query = session.createQuery("from Timeinterval where timeid = :timeid");
-        query.setParameter("timeid", teId);
-        for (Timeinterval ti : (List<Timeinterval>) query.list()) {
-            times = new String[]{ti.getBegintime().toString(), ti.getEndtime().toString()};
-        }
-        Event event = (Event) session.createQuery("from Event where postid = :id").setParameter("id", id).list().get(0);
-        query = session.createQuery("from Workevent where eventid = :eventId");
-        query.setParameter("eventId", id);
-        Workevent workevent = null;
-        WorkEventResult workEventResult = null;
-        if (query.list().size() > 0) {
-            workevent = (Workevent) query.list().get(0);
-        }
-        if (workevent != null) {
-            // Get locations
-            query = session.createQuery("from Location where id = " + workevent.getLocationid());
-            Location location = (Location) query.list().get(0);
-            List<Object[]> attrs = session.createQuery("select ci.name, " +
-                    "pr.name, " +
-                    "co.name from Location l " +
-                    "inner join Cityprovince cp on l.cityprovinceid = cp.id " +
-                    "inner join Provincecountry pc on pc.id = l.provincecountryid " +
-                    "inner join City ci on ci.id = cp.cityid " +
-                    "inner join Province pr on pr.id = cp.provinceid " +
-                    "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
-            LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
+        Workevent workevent = session.get(Workevent.class, id);
+        Event event = session.get(Event.class, id);
+        Timedentity timedentity = session.get(Timedentity.class, id);
 
-            Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
-            workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times, getEventMedia(session, workevent.getEventid()));
+
+        Date[] dates = Util.getDates(timedentity.getTimeid());
+        String[] dateStrings = new String[dates.length];
+        for (int i = 0; i < dateStrings.length; i++) {
+            dateStrings[i] = dates[i].toString();
         }
+
+        // Get location
+        LocationResult locationResult = Util.getLocationFromId(workevent.getLocationid(), session);
+
+        Company company = session.get(Company.class, workevent.getCompanyid());
+        WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), dateStrings, getEventMedia(session, workevent.getEventid()));
+        session.close();
         return ok(Json.toJson(workEventResult));
     }
 
     private Result getLocatedEvent(Integer id) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        LocatedEventResult locatedEventResult = null;
-        Query query = session.createQuery("from Locatedevent where eventid = :eventId");
-        query.setParameter("eventId", id);
-        Locatedevent died;
-        died = (Locatedevent) query.list().get(0);
-        if (died != null) {
-            // Get event
-            Event diedEvent = (Event) session.createQuery("from Event where postid = " + died.getEventid()).list().get(0);
-            // Get locations
-            query = session.createQuery("from Location where id = " + died.getLocationid());
-            Location location = (Location) query.list().get(0);
-            List<Object[]> attrs = session.createQuery("select ci.name, " +
-                    "pr.name, " +
-                    "co.name from Location l " +
-                    "inner join Cityprovince cp on l.cityprovinceid = cp.id " +
-                    "inner join Provincecountry pc on pc.id = l.provincecountryid " +
-                    "inner join City ci on ci.id = cp.cityid " +
-                    "inner join Province pr on pr.id = cp.provinceid " +
-                    "inner join Country co on co.id = pc.countryid where l.id = :locationid").setParameter("locationid", location.getId()).list();
-            LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
-            Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", diedEvent.getPostid()).list().get(0);
-            Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
-            locatedEventResult = new LocatedEventResult(diedEvent.getPostid(), locationResult, diedEvent.getName(), diedEvent.getDescription(), new String[]{time.getTime().toString()}, Util.getEventMedia(session, diedEvent.getPostid()));
+        Locatedevent locatedEvent = session.get(Locatedevent.class, id);
+        // Get event
+        Event event = (Event) session.createQuery("from Event where postid = " + locatedEvent.getEventid()).list().get(0);
+
+        // Get location
+        Location location = session.get(Location.class, locatedEvent.getLocationid());
+        LocationResult locationResult = Util.getLocationFromId(location.getId(), session);
+        Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", event.getPostid()).list().get(0);
+
+        Date[] dates = Util.getDates(timedentity.getTimeid());
+        String[] dateStrings = new String[dates.length];
+        for (int i = 0; i < dateStrings.length; i++) {
+            dateStrings[i] = dates[i].toString();
         }
+        LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), dateStrings, Util.getEventMedia(session, event.getPostid()));
         session.close();
         return ok(Json.toJson(locatedEventResult));
     }
 
     private Result getMoveEvent(Integer id) {
-        return ok();
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Moveevent moveEvent = session.get(Moveevent.class, id);
+        // Get event
+        Event event = (Event) session.createQuery("from Event where postid = " + moveEvent.getEventid()).list().get(0);
+
+        // Get location
+        Location location = session.get(Location.class, moveEvent.getLocationid());
+        LocationResult locationResult = Util.getLocationFromId(location.getId(), session);
+        Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", event.getPostid()).list().get(0);
+
+        Date[] dates = Util.getDates(timedentity.getTimeid());
+        String[] dateStrings = new String[dates.length];
+        for (int i = 0; i < dateStrings.length; i++) {
+            dateStrings[i] = dates[i].toString();
+        }
+        MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), dateStrings, Util.getEventMedia(session, event.getPostid()));
+        session.close();
+        return ok(Json.toJson(moveEventResult));
     }
 
+    @Transactional
+    public Result updateEvent(Integer eventid) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        JsonNode body = request().body().asJson();
+
+        session.getTransaction().begin();
+
+        Event event = session.get(Event.class, eventid);
+        Timedentity eventTimedEntity = session.get(Timedentity.class, eventid);
+        if (event == null) {
+            session.getTransaction().rollback();
+            session.close();
+            return notFound();
+        }
+        if (body.has("name")) {
+            event.setName(body.get("name").asText());
+        }
+        if (body.has("description")) {
+            event.setDescription(body.get("description").asText());
+        }
+        if (body.has("time")) {
+            if (body.get("time").size() == 1) {
+                Timedentity timedentity = session.get(Timedentity.class, eventid);
+                timedentity.setTimeid(Util.getOrCreateTime(new Date[]{Util.parseDateFromString(body.get("time").get(0).asText())}));
+            } else if (body.get("time").size() == 2) {
+                Timedentity timedentity = session.get(Timedentity.class, eventid);
+                System.out.println(timedentity.getTimeid());
+                Date[] dates = new Date[]{Util.parseDateFromString(body.get("time").get(0).asText()), Util.parseDateFromString(body.get("time").get(1).asText())};
+                timedentity.setTimeid(Util.getOrCreateTime(dates));
+            }
+        }
+        if (body.has("visibility")) {
+            if (!Util.setVisibilityToEntity2(eventid, body.get("visibility"), session)) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest("Invalid visibility");
+            }
+        }
+
+        // Add event type
+        if (body.has("type")) {
+            String type = body.get("type").asText();
+            List<String> eventTypes = new ArrayList<>();
+            eventTypes.add("LocatedEvent");
+            eventTypes.add("MoveEvent");
+            eventTypes.add("WorkEvent");
+            if (eventTypes.indexOf(type) == -1) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest("Invalid event type");
+            }
+            Integer locationId = null;
+            if (body.has("location")) {
+                String city = body.get("location").get("city").asText();
+                String province = body.get("location").get("province").asText();
+                String country = body.get("location").get("country").asText();
+                locationId = createOrGetLocation(city, province, country);
+                System.out.println("New Location!: " + locationId);
+            }
+            if (type.equals("LocatedEvent")) {
+                Moveevent moveevent = session.get(Moveevent.class, eventid);
+                if (moveevent != null) {
+                    if (locationId == null) { // Get former location
+                        locationId = moveevent.getLocationid();
+                    }
+                    session.delete(moveevent);
+                }
+
+                Workevent workevent = session.get(Workevent.class, eventid);
+                if (workevent != null) {
+                    if (locationId == null) { // Get former location
+                        locationId = workevent.getLocationid();
+                    }
+                    session.delete(workevent);
+                }
+
+                Locatedevent locatedevent = session.get(Locatedevent.class, eventid);
+                if (locatedevent == null) {
+                    // Create new event
+                    locatedevent = new Locatedevent();
+                    if (locationId != null) {
+                        locatedevent.setLocationid(locationId);
+                    } else {
+                        session.getTransaction().rollback();
+                        session.close();
+                        return badRequest("No location specified for new Locatedevent");
+                    }
+                    locatedevent.setEventid(eventid);
+                    session.save(locatedevent);
+                } else {
+                    if (locationId != null)
+                        locatedevent.setLocationid(locationId);
+                }
+            } else if (type.equals("WorkEvent")) {
+                System.out.println("Work event");
+                // First, remove other subevents
+                Locatedevent locatedevent = session.get(Locatedevent.class, eventid);
+                if (locatedevent != null) {
+                    System.out.println("Located event!");
+                    if (locationId == null) { // Get former location
+                        locationId = locatedevent.getLocationid();
+                    }
+                    session.delete(locatedevent);
+                }
+                System.out.println(locationId);
+                Moveevent moveevent = session.get(Moveevent.class, eventid);
+                if (moveevent != null) {
+                    if (locationId == null) { // Get former location
+                        locationId = moveevent.getLocationid();
+                    }
+                    session.delete(moveevent);
+                }
+
+
+                Workevent workevent = session.get(Workevent.class, eventid);
+                boolean wasAWorkEvent = true;
+                if (workevent == null) {
+                    workevent = new Workevent();
+                    workevent.setEventid(eventid);
+                    wasAWorkEvent = false;
+                }
+                if (locationId != null)
+                    workevent.setLocationid(locationId);
+                if (body.has("company")) {
+                    List<Company> companies = session.createQuery("from Company where name = :name").setParameter("name", body.get("company").asText()).list();
+
+                    Company company;
+                    if (companies.size() == 0) {
+                        company = new Company();
+                        company.setName(body.get("company").asText());
+                        session.save(company);
+                    } else {
+                        company = companies.get(0);
+                    }
+                    workevent.setCompanyid(company.getId());
+                } else if (!wasAWorkEvent) {
+                    session.getTransaction().rollback();
+                    session.close();
+                    return badRequest("No work event existed for this event. Please specify a company");
+                }
+                if (body.has("position")) {
+                    workevent.setPositionheld(body.get("position").asText());
+                } else if (!wasAWorkEvent) {
+                    return badRequest("No Workevent existed for this event. Please specify a position");
+                }
+                session.save(workevent);
+
+            } else if (type.equals("MoveEvent")) {
+                // First, remove other subevents
+                Locatedevent locatedevent = session.get(Locatedevent.class, eventid);
+                if (locatedevent != null) {
+                    if (locationId == null) { // Get former location
+                        locationId = locatedevent.getLocationid();
+                    }
+                    session.delete(locatedevent);
+                }
+
+                Workevent workevent = session.get(Workevent.class, eventid);
+                if (workevent != null) {
+                    if (locationId == null) { // Get former location
+                        locationId = workevent.getLocationid();
+                    }
+                    session.delete(workevent);
+                }
+
+                Moveevent moveevent = session.get(Moveevent.class, eventid);
+                if (moveevent == null) {
+                    moveevent = new Moveevent();
+                    if (locationId != null) {
+                        moveevent.setLocationid(locationId);
+                    } else {
+                        // New Moveevent but no location specified
+                        session.getTransaction().rollback();
+                        session.close();
+                        return badRequest("No location specified for new Moveevent");
+                    }
+                    moveevent.setEventid(eventid);
+                }
+                session.save(moveevent);
+            }
+        }
+        if (body.has("media")) {
+            for (int i = 0; i < body.get("media").size(); i++) {
+                JsonNode mediaNode = body.get("media").get(i);
+                Timedentity timedentity = new Timedentity();
+                int timeid = Util.getOrCreateTime(new Date[]{new Date(System.currentTimeMillis())});
+                timedentity.setTimeid(timeid);
+                timedentity.setVisibility(eventTimedEntity.getVisibility());
+                session.save(timedentity);
+
+                Post post = new Post();
+                post.setTimedentityid(timedentity.getId());
+                session.save(post);
+
+                Media media = new Media();
+                media.setPostid(post.getTimedentityid());
+                media.setPath(body.get("media").get(i).get("path").asText());
+
+                if (mediaNode.get("type").asText().equals("image"))
+                    media.setType(0);
+                else if (mediaNode.get("type").asText().equals("video"))
+                    media.setType(1);
+                else if (mediaNode.get("type").asText().equals("audio"))
+                    media.setType(2);
+                else {
+                    session.getTransaction().rollback();
+                    session.close();
+                    return badRequest("Bad media type: " + mediaNode.get("type"));
+                }
+                session.save(media);
+
+                Eventmedia eventmedia = new Eventmedia();
+                eventmedia.setEventid(eventid);
+                eventmedia.setMediaid(media.getPostid());
+                session.save(eventmedia);
+            }
+        }
+        session.save(event);
+        session.getTransaction().commit();
+        session.close();
+        return ok();
+    }
 }

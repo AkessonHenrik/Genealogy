@@ -28,12 +28,17 @@ public class SearchController extends Controller {
         String firstname = request().body().asJson().get("firstname").asText();
         String lastname = request().body().asJson().get("lastname").asText();
 
+        if (firstname.length() == 0 && lastname.length() == 0) {
+            session.close();
+            return badRequest("Empty search parameters");
+        }
+
         Query query = session.createQuery("select peopleentityid from Profile where firstname like '%" + firstname + "%' and lastname like '%" + lastname + "%'");
         List<Integer> ids = query.list();
         List<SearchResult> results = new ArrayList<>();
 
         for (Integer id : ids) {
-            List<Object[]> profiles = session.createQuery("select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id).list();
+            List<Object[]> profiles = session.createQuery("select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = :id").setParameter("id", id).list();
             for (Object[] resultObj : profiles) {
                 int resid = (int) resultObj[0];
                 String resfirstname = (String) resultObj[1];
@@ -42,8 +47,8 @@ public class SearchController extends Controller {
                 int resGender = (int) resultObj[4];
                 SearchResult caller = new SearchResult(resid, resfirstname, reslastname, resPath, resGender);
                 boolean alreadyIn = false;
-                for (SearchResult thing : results) {
-                    if (thing.id == resid) {
+                for (SearchResult searchResult : results) {
+                    if (searchResult.id == resid) {
                         alreadyIn = true;
                     }
                 }

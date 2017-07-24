@@ -53,9 +53,7 @@ public class Pendingtagged {
 
         if (id != that.id) return false;
         if (profileid != null ? !profileid.equals(that.profileid) : that.profileid != null) return false;
-        if (postid != null ? !postid.equals(that.postid) : that.postid != null) return false;
-
-        return true;
+        return postid != null ? postid.equals(that.postid) : that.postid == null;
     }
 
     @Override

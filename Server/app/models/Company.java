@@ -39,9 +39,7 @@ public class Company {
         Company company = (Company) o;
 
         if (id != company.id) return false;
-        if (name != null ? !name.equals(company.name) : company.name != null) return false;
-
-        return true;
+        return name != null ? name.equals(company.name) : company.name == null;
     }
 
     @Override

@@ -52,10 +52,7 @@ public class Timedentityowner {
         if (id != that.id) return false;
         if (timedentityid != null ? !timedentityid.equals(that.timedentityid) : that.timedentityid != null)
             return false;
-        if (peopleorrelationshipid != null ? !peopleorrelationshipid.equals(that.peopleorrelationshipid) : that.peopleorrelationshipid != null)
-            return false;
-
-        return true;
+        return peopleorrelationshipid != null ? peopleorrelationshipid.equals(that.peopleorrelationshipid) : that.peopleorrelationshipid == null;
     }
 
     @Override

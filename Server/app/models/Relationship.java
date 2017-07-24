@@ -66,9 +66,7 @@ public class Relationship {
         if (peopleentityid != that.peopleentityid) return false;
         if (profile1 != null ? !profile1.equals(that.profile1) : that.profile1 != null) return false;
         if (profile2 != null ? !profile2.equals(that.profile2) : that.profile2 != null) return false;
-        if (type != null ? !type.equals(that.type) : that.type != null) return false;
-
-        return true;
+        return type != null ? type.equals(that.type) : that.type == null;
     }
 
     @Override

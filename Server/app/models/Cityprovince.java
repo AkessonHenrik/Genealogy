@@ -51,9 +51,7 @@ public class Cityprovince {
 
         if (id != that.id) return false;
         if (cityid != null ? !cityid.equals(that.cityid) : that.cityid != null) return false;
-        if (provinceid != null ? !provinceid.equals(that.provinceid) : that.provinceid != null) return false;
-
-        return true;
+        return provinceid != null ? provinceid.equals(that.provinceid) : that.provinceid == null;
     }
 
     @Override

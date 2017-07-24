@@ -52,9 +52,7 @@ public class Visibleby {
         if (id != visibleby.id) return false;
         if (timedentityid != null ? !timedentityid.equals(visibleby.timedentityid) : visibleby.timedentityid != null)
             return false;
-        if (accessid != null ? !accessid.equals(visibleby.accessid) : visibleby.accessid != null) return false;
-
-        return true;
+        return accessid != null ? accessid.equals(visibleby.accessid) : visibleby.accessid == null;
     }
 
     @Override

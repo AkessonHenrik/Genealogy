@@ -28,9 +28,7 @@ public class Adoptivechild {
 
         Adoptivechild that = (Adoptivechild) o;
 
-        if (parentsofid != that.parentsofid) return false;
-
-        return true;
+        return parentsofid == that.parentsofid;
     }
 
     @Override

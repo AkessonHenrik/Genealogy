@@ -45,3 +45,9 @@ DELETE        /profile/:id             @controllers.ProfileController.delete(id:
 POST          /group                   @controllers.GroupController.createGroup
 
 GET           /owned/groups/:id        @controllers.GroupController.getOwnedGroups(id: Integer)
+
+PATCH         /event/:eventid          @controllers.EventController.updateEvent(eventid: Integer)
+
+PATCH         /relationship/:id        @controllers.RelationshipController.updateRelationship(id: Integer)
+
+DELETE        /relationship/:id        @controllers.RelationshipController.deleteRelationship(id: Integer)

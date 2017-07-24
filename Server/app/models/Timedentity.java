@@ -52,9 +52,7 @@ public class Timedentity {
 
         if (id != that.id) return false;
         if (timeid != that.timeid) return false;
-        if (visibility != null ? !(visibility == that.visibility) : that.visibility != null) return false;
-
-        return true;
+        return visibility != null ? visibility == that.visibility : that.visibility == null;
     }
 
     @Override

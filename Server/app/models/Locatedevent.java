@@ -41,9 +41,7 @@ public class Locatedevent {
         Locatedevent that = (Locatedevent) o;
 
         if (eventid != that.eventid) return false;
-        if (locationid != null ? !locationid.equals(that.locationid) : that.locationid != null) return false;
-
-        return true;
+        return locationid != null ? locationid.equals(that.locationid) : that.locationid == null;
     }
 
     @Override

@@ -41,9 +41,7 @@ public class Ghost {
         Ghost ghost = (Ghost) o;
 
         if (profileid != ghost.profileid) return false;
-        if (owner != null ? !owner.equals(ghost.owner) : ghost.owner != null) return false;
-
-        return true;
+        return owner != null ? owner.equals(ghost.owner) : ghost.owner == null;
     }
 
     @Override

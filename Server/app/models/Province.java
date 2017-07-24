@@ -39,9 +39,7 @@ public class Province {
         Province province = (Province) o;
 
         if (id != province.id) return false;
-        if (name != null ? !name.equals(province.name) : province.name != null) return false;
-
-        return true;
+        return name != null ? name.equals(province.name) : province.name == null;
     }
 
     @Override

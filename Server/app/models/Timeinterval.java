@@ -55,9 +55,7 @@ public class Timeinterval {
 
         if (timeid != that.timeid) return false;
         if (begintime != null ? !begintime.equals(that.begintime) : that.begintime != null) return false;
-        if (endtime != null ? !endtime.equals(that.endtime) : that.endtime != null) return false;
-
-        return true;
+        return endtime != null ? endtime.equals(that.endtime) : that.endtime == null;
     }
 
     @Override

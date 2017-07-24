@@ -66,9 +66,7 @@ public class Workevent {
         if (positionheld != null ? !positionheld.equals(workevent.positionheld) : workevent.positionheld != null)
             return false;
         if (companyid != null ? !companyid.equals(workevent.companyid) : workevent.companyid != null) return false;
-        if (locationid != null ? !locationid.equals(workevent.locationid) : workevent.locationid != null) return false;
-
-        return true;
+        return locationid != null ? locationid.equals(workevent.locationid) : workevent.locationid == null;
     }
 
     @Override

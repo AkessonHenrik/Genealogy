@@ -25,9 +25,7 @@ public class Access {
 
         Access access = (Access) o;
 
-        if (id != access.id) return false;
-
-        return true;
+        return id == access.id;
     }
 
     @Override

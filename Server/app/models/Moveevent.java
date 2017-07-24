@@ -41,9 +41,7 @@ public class Moveevent {
         Moveevent moveevent = (Moveevent) o;
 
         if (eventid != moveevent.eventid) return false;
-        if (locationid != moveevent.locationid) return false;
-
-        return true;
+        return locationid == moveevent.locationid;
     }
 
     @Override

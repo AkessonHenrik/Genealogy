@@ -51,9 +51,7 @@ public class Provincecountry {
 
         if (id != that.id) return false;
         if (provinceid != null ? !provinceid.equals(that.provinceid) : that.provinceid != null) return false;
-        if (countryid != null ? !countryid.equals(that.countryid) : that.countryid != null) return false;
-
-        return true;
+        return countryid != null ? countryid.equals(that.countryid) : that.countryid == null;
     }
 
     @Override

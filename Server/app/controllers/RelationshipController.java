@@ -22,6 +22,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import static utils.Util.parseDateFromString;
+
 /**
  * Created by Henrik on 19/06/2017.
  */
@@ -42,26 +44,6 @@ public class RelationshipController extends Controller {
         int profile1 = jsonNode.get("profile1").asInt();
         int profile2 = jsonNode.get("profile2").asInt();
         String relTypeString = jsonNode.get("type").asText();
-        int type = 5;
-        System.out.println(relTypeString);
-        switch (relTypeString) {
-            case "spouse":
-                type = 0;
-                break;
-            case "partner":
-                type = 1;
-                break;
-            case "sibling":
-                type = 2;
-                break;
-            case "cousin":
-                type = 3;
-                break;
-            case "friend":
-                type = 4;
-                break;
-        }
-        System.out.println("Type = " + type);
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         if (session.createQuery("from Account where id = :id").setParameter("id", requesterId).list().size() == 0) {
             session.close();
@@ -105,12 +87,6 @@ public class RelationshipController extends Controller {
             }
         }
 
-        // Compare p1 and p2 dates with relationship dates
-//        if (!validateRelationshipDates(session, p1.getTimeid(), beginDate, endDate) || !validateRelationshipDates(session, p2.getTimeid(), beginDate, endDate)) {
-//            session.close();
-//            return badRequest("Incoherent relationship dates with profiles");
-//        }
-
         if (endDate == null) {
             Query query = session.createQuery("from Timeinterval where timeid = :id").setParameter("id", p1.getTimeid());
             if (query.list().size() > 0) {
@@ -136,7 +112,7 @@ public class RelationshipController extends Controller {
         relationship.setPeopleentityid(peopleentity.getTimedentityid());
         relationship.setProfile1(profile1);
         relationship.setProfile2(profile2);
-        relationship.setType(type);
+        relationship.setType(getRelationshipTypeAsIntFromString(relTypeString));
         session.save(relationship);
 
         Timedentityowner relationshipOwner = new Timedentityowner();
@@ -490,7 +466,6 @@ public class RelationshipController extends Controller {
         return ok(Json.toJson(fr).toString());
     }
 
-
     List<SearchResult> getPeopleFromParents(List<Parentsof> parents, Session session) {
         List<SearchResult> results = new ArrayList<>();
         for (Parentsof theirChild : parents) {
@@ -499,6 +474,81 @@ public class RelationshipController extends Controller {
             results.addAll(SearchResult.createSearchResultPersonFromQueryResult(kids));
         }
         return results;
+    }
+
+    @Transactional
+    public Result updateRelationship(Integer id) {
+        if (!request().hasHeader("requester")) {
+            return forbidden();
+        }
+        Integer requesterId = Integer.parseInt(request().getHeader("requester"));
+
+        try {
+            if (!Util.isAllowedToSeeEntity(requesterId, id)) {
+                return forbidden();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        Timedentityowner owner = session.get(Timedentityowner.class, requesterId);
+        Relationship relationship = session.get(Relationship.class, id);
+        if (owner == null) {
+
+            // Get relationship people
+
+            int p1 = relationship.getProfile1();
+            int p2 = relationship.getProfile2();
+
+            boolean canAccess = false;
+
+            if (session.createQuery("from Ghost where profileid = :p1 and owner = :requester").setParameter("p1", p1).setParameter("requester", requesterId).list().size() == 1) {
+                canAccess = true;
+            } else if (session.createQuery("from Ghost where profileid = :p1 and owner = :requester").setParameter("p1", p2).setParameter("requester", requesterId).list().size() == 1) {
+                canAccess = true;
+            }
+            if (!canAccess) {
+                session.close();
+                return forbidden();
+            }
+        }
+
+        JsonNode body = request().body().asJson();
+
+        session.getTransaction().begin();
+
+        if (body.has("time")) {
+            Date[] dates = null;
+            if (body.get("time").size() == 1) {
+                dates = new Date[]{parseDateFromString(body.get("time").get(0).asText())};
+            } else if (body.get("time").size() == 2) {
+                dates = new Date[]{parseDateFromString(body.get("time").get(0).asText()), parseDateFromString(body.get("time").get(1).asText())};
+            }
+            if (dates != null) {
+                int timeid = Util.getOrCreateTime(dates);
+                Timedentity timedentity = session.get(Timedentity.class, id);
+                timedentity.setTimeid(timeid);
+                session.save(timedentity);
+
+            }
+        }
+
+        if (body.has("type")) {
+            String relTypeString = body.get("type").asText();
+            relationship.setType(getRelationshipTypeAsIntFromString(relTypeString));
+            session.save(relationship);
+
+
+            Event relationshipEvent = session.get(Event.class, id);
+            relationshipEvent.setDescription("Became " + relTypeString);
+            session.save(relationshipEvent);
+        }
+
+        session.getTransaction().commit();
+        session.close();
+        return ok();
     }
 
     private boolean validateRelationshipDates(Session session, int timeId, Date beginDate, Date endDate) {
@@ -525,5 +575,63 @@ public class RelationshipController extends Controller {
         }
         return true;
     }
-}
 
+    private int getRelationshipTypeAsIntFromString(String relType) {
+        int type = 5;
+        switch (relType) {
+            case "spouse":
+                type = 0;
+                break;
+            case "partner":
+                type = 1;
+                break;
+            case "sibling":
+                type = 2;
+                break;
+            case "cousin":
+                type = 3;
+                break;
+            case "friend":
+                type = 4;
+                break;
+        }
+        return type;
+    }
+
+    @Transactional
+    public Result deleteRelationship(Integer id) {
+        if (!request().hasHeader("requester")) {
+            return forbidden();
+        }
+        Integer requesterId = Integer.parseInt(request().getHeader("requester"));
+
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        Relationship relationship = session.get(Relationship.class, id);
+        if (relationship == null) {
+            session.close();
+            return notFound();
+        }
+
+        boolean isAllowed = requesterId == relationship.getProfile1() || requesterId == relationship.getProfile2();
+        if (!isAllowed) {
+            Ghost ghost = session.get(Ghost.class, relationship.getProfile1());
+            isAllowed = ghost != null && ghost.getOwner() == requesterId;
+            if (!isAllowed) {
+                ghost = session.get(Ghost.class, relationship.getProfile2());
+                isAllowed = ghost != null && ghost.getOwner() == requesterId;
+            }
+        }
+
+        if (isAllowed) {
+            session.getTransaction().begin();
+            session.delete(relationship);
+            session.getTransaction().commit();
+            session.close();
+            return ok();
+        }
+
+        session.close();
+        return forbidden();
+    }
+}

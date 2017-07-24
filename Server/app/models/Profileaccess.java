@@ -51,9 +51,7 @@ public class Profileaccess {
 
         if (id != that.id) return false;
         if (accessid != null ? !accessid.equals(that.accessid) : that.accessid != null) return false;
-        if (profileid != null ? !profileid.equals(that.profileid) : that.profileid != null) return false;
-
-        return true;
+        return profileid != null ? profileid.equals(that.profileid) : that.profileid == null;
     }
 
     @Override

@@ -27,9 +27,7 @@ public class Time {
 
         Time time = (Time) o;
 
-        if (id != time.id) return false;
-
-        return true;
+        return id == time.id;
     }
 
     @Override

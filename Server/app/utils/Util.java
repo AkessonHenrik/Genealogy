@@ -5,6 +5,7 @@ import models.*;
 import org.hibernate.*;
 import org.hibernate.transform.Transformers;
 import play.libs.Json;
+import returnTypes.LocationResult;
 
 import javax.persistence.LockModeType;
 import javax.validation.ConstraintViolationException;
@@ -181,7 +182,7 @@ public class Util {
      */
     public static Date parseDateFromString(String dateToParse) {
         try {
-            SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yyyy");
+            SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
             return new Date(sdf1.parse(dateToParse).getTime());
         } catch (ParseException e) {
             System.out.println("Exception while parsing date: " + e.getMessage());
@@ -193,12 +194,12 @@ public class Util {
      * @param id: entity whose Dates need to be retrieved
      * @return date(s) of entity. Array of length 1 if entity is associated to a Singletime, length 2 if Timeinterval
      */
-    public static Date[] getDates(int id) {
+    public static Date[] getDates(int entityid) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", id).list().get(0);
-        Time time = (Time) session.createQuery("from Time where id = :id").setParameter("id", timedentity.getTimeid()).list().get(0);
         // Single time
-        Query query = session.createQuery("from Singletime where timeid = :id").setParameter("id", time.getId());
+        Timedentity timedentity = session.get(Timedentity.class, entityid);
+        int id = timedentity.getTimeid();
+        Query query = session.createQuery("from Singletime where timeid = :id").setParameter("id", id);
         if (query.list().size() > 0) {
             Singletime singletime = (Singletime) query.list().get(0);
             session.close();
@@ -206,7 +207,7 @@ public class Util {
         }
 
         // Time interval
-        query = session.createQuery("from Timeinterval where timeid = :id").setParameter("id", time.getId());
+        query = session.createQuery("from Timeinterval where timeid = :id").setParameter("id", id);
         if (query.list().size() > 0) {
             Timeinterval timeinterval = (Timeinterval) query.list().get(0);
             session.close();
@@ -331,7 +332,6 @@ public class Util {
         return true;
     }
 
-
     public static boolean setVisibilityToEntity2(int entityId, JsonNode visibility, Session session) {
         System.out.println(visibility);
 //        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
@@ -364,7 +364,7 @@ public class Util {
                     return false;
                 }
 
-                if(included != null) {
+                if (included != null) {
                     if (included.has("groups")) {
                         for (int i = 0; i < included.get("groups").size(); i++) {
                             int groupId = included.get("groups").get(i).asInt();
@@ -404,7 +404,7 @@ public class Util {
                         }
                     }
                 }
-                if(excluded != null) {
+                if (excluded != null) {
                     if (excluded.has("groups")) {
                         for (int i = 0; i < excluded.get("groups").size(); i++) {
                             int groupId = excluded.get("groups").get(i).asInt();
@@ -445,8 +445,6 @@ public class Util {
                     }
                 }
                 session.save(entity);
-
-
             } else {
                 return false;
             }
@@ -671,7 +669,6 @@ public class Util {
         return false;
     }
 
-
     public static EntityType getTypeOfEntity(int timedentityId) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         if (session.createQuery("from Profile where peopleentityid = :id").setParameter("id", timedentityId).list().size() > 0) {
@@ -697,6 +694,17 @@ public class Util {
 
         session.close();
         return null;
+    }
+
+    public static LocationResult getLocationFromId(Integer id, Session session) {
+        System.out.println("LocationFromId: " + id);
+        Location location = session.get(Location.class, id);
+        Provincecountry provincecountry = session.get(Provincecountry.class, location.getProvincecountryid());
+        Cityprovince cityprovince = session.get(Cityprovince.class, location.getCityprovinceid());
+        Country country = session.get(Country.class, provincecountry.getCountryid());
+        Province province = session.get(Province.class, provincecountry.getProvinceid());
+        City city = session.get(City.class, cityprovince.getCityid());
+        return new LocationResult(city.getName(), province.getName(), country.getName());
     }
 }
 

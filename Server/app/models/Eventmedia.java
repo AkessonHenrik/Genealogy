@@ -51,9 +51,7 @@ public class Eventmedia {
 
         if (id != that.id) return false;
         if (mediaid != null ? !mediaid.equals(that.mediaid) : that.mediaid != null) return false;
-        if (eventid != null ? !eventid.equals(that.eventid) : that.eventid != null) return false;
-
-        return true;
+        return eventid != null ? eventid.equals(that.eventid) : that.eventid == null;
     }
 
     @Override

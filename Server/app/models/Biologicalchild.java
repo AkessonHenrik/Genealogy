@@ -28,9 +28,7 @@ public class Biologicalchild {
 
         Biologicalchild that = (Biologicalchild) o;
 
-        if (parentsofid != that.parentsofid) return false;
-
-        return true;
+        return parentsofid == that.parentsofid;
     }
 
     @Override

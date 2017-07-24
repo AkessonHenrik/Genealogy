@@ -52,9 +52,7 @@ public class Group {
 
         if (id != group.id) return false;
         if (name != null ? !name.equals(group.name) : group.name != null) return false;
-        if (owner != null ? !owner.equals(group.owner) : group.owner != null) return false;
-
-        return true;
+        return owner != null ? owner.equals(group.owner) : group.owner == null;
     }
 
     @Override

@@ -53,9 +53,7 @@ public class Account {
 
         if (profileid != account.profileid) return false;
         if (email != null ? !email.equals(account.email) : account.email != null) return false;
-        if (password != null ? !password.equals(account.password) : account.password != null) return false;
-
-        return true;
+        return password != null ? password.equals(account.password) : account.password == null;
     }
 
     @Override

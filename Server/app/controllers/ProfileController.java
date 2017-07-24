@@ -29,18 +29,11 @@ public class ProfileController extends Controller {
     @Transactional
     public Result createProfile() {
 
-//        int requester = Integer.parseInt(request().getHeader("requester"));
-//        // Start creating entities
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-//
-//        if (session.createQuery("from Account where id = :id").setParameter("id", requester).list().size() == 0) {
-//            session.close();
-//            return badRequest("Given requester does not match any accounts");
-//        }
 
         JsonNode jsonNode = request().body().asJson();
-        // Extract values from request body
 
+        // Extract values from request body
         Integer gender = jsonNode.get("gender").asInt();
 
         String birthDay = jsonNode.get("birthDay").asText();
@@ -48,7 +41,6 @@ public class ProfileController extends Controller {
         if (jsonNode.has("deathDay")) {
             deathDay = jsonNode.get("deathDay").asText();
         }
-
 
         session.getTransaction().begin();
 
@@ -66,18 +58,11 @@ public class ProfileController extends Controller {
         String bornCity = bornLocationNode.get("city").asText();
         String bornProvince = bornLocationNode.get("province").asText();
         String bornCountry = bornLocationNode.get("country").asText();
-//        JsonNode bornMedia = bornNode.get("media");
 
-
-        Date birthDayDate = null;
+        Date birthDayDate = Util.parseDateFromString(birthDay);
         Date deathDayDate = null;
-        try {
-            SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
-            birthDayDate = new Date(sdf1.parse(birthDay).getTime());
-            if (!deathDay.equals("")) {
-                deathDayDate = new Date(sdf1.parse(deathDay).getTime());
-            }
-        } catch (ParseException e) {
+        if (!deathDay.equals("")) {
+            deathDayDate = Util.parseDateFromString(deathDay);
         }
 
         // Born locatedevent
@@ -234,11 +219,16 @@ public class ProfileController extends Controller {
                 return badRequest();
             }
         }
-
+        System.out.println(profile.getPeopleentityid());
+        System.out.println(profile.getFirstname());
+        System.out.println(profile.getLastname());
+        System.out.println(profilePicturePath);
+        System.out.println(profile.getGender());
         SearchResult searchResult = new SearchResult(profile.getPeopleentityid(), profile.getFirstname(), profile.getLastname(), profilePicturePath, profile.getGender());
 
 
         session.close();
+        System.out.println(Json.toJson(searchResult));
         return ok(Json.toJson(searchResult));
     }
 
@@ -248,15 +238,20 @@ public class ProfileController extends Controller {
         int ownerId = jsonNode.get("ownerId").asInt();
         int ghostId = jsonNode.get("profileId").asInt();
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        session.getTransaction().begin();
+        if (session.get(Ghost.class, ghostId) == null) {
+            session.getTransaction().begin();
 
-        Ghost ghost = new Ghost();
-        ghost.setOwner(ownerId);
-        ghost.setProfileid(ghostId);
-        session.save(ghost);
-        session.getTransaction().commit();
+            Ghost ghost = new Ghost();
+            ghost.setOwner(ownerId);
+            ghost.setProfileid(ghostId);
+            session.save(ghost);
+            session.getTransaction().commit();
+            session.close();
+            return ok(Json.toJson(ghost));
+        }
         session.close();
-        return ok(Json.toJson(ghost));
+        return badRequest("Invalid profile id");
+
     }
 
     @Transactional
@@ -383,10 +378,20 @@ public class ProfileController extends Controller {
                     "inner join Province pr on pr.id = cp.provinceid " +
                     "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
             LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
-            Timedentity diedTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", bornEvent.getPostid()).list().get(0);
-            Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
+            Timedentity bornTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", bornEvent.getPostid()).list().get(0);
+            Date[] dates = Util.getDates(bornTE.getTimeid());
+            System.out.println(Json.toJson(dates));
+//            Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
+            String[] times;
+            if (dates.length == 2) {
+                times = new String[]{dates[0].toString(), dates[1].toString()};
+                System.out.println("Times");
+                System.out.println(Json.toJson(times));
+            } else {
+                times = new String[]{dates[0].toString()};
+            }
 
-            bornEventResult = new LocatedEventResult(bornEvent.getPostid(), locationResult, bornEvent.getName(), bornEvent.getDescription(), new String[]{time.getTime().toString()}, getEventMedia(session, bornEvent.getPostid()));
+            bornEventResult = new LocatedEventResult(bornEvent.getPostid(), locationResult, bornEvent.getName(), bornEvent.getDescription(), times, getEventMedia(session, bornEvent.getPostid()));
             for (EventResult er : eventResults) {
                 if (er.id == bornEventResult.id) {
                     eventResults.remove(er);
@@ -576,7 +581,6 @@ public class ProfileController extends Controller {
         return ok(Json.toJson(fullProfile));
     }
 
-
     public Result isOwned() {
         int ownerId = request().body().asJson().get("ownerid").asInt();
         int timedEntityId = request().body().asJson().get("timedentityid").asInt();
@@ -591,11 +595,26 @@ public class ProfileController extends Controller {
                 .setParameter("timedEntityId", timedEntityId)
                 .setParameter("ownerId", ownerId);
         if (query.list().size() == 0) {
+            query = session.createQuery("from Timedentityowner where timedentityid = :tid").setParameter("tid", timedEntityId);
+            List<Timedentityowner> owners = query.list();
+            for (Timedentityowner owner : owners) {
+                if (owner.getPeopleorrelationshipid() == ownerId) {
+                    session.close();
+                    return ok(Json.toJson(true));
+                } else {
+                    Ghost ghost = session.get(Ghost.class, owner.getPeopleorrelationshipid());
+                    if (ghost != null && ghost.getOwner() == ownerId) {
+                        session.close();
+                        return ok(Json.toJson(true));
+                    }
+                }
+            }
+        } else {
             session.close();
-            return ok(Json.toJson(false));
+            return ok(Json.toJson(true));
         }
         session.close();
-        return ok(Json.toJson(true));
+        return ok(Json.toJson(false));
     }
 
     @Transactional
@@ -690,13 +709,15 @@ public class ProfileController extends Controller {
     public Result delete(Integer id) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
-        // Get profile picture id
-        Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id).list().get(0);
-        Timedentity profilePic = (Timedentity) session.createQuery("from Timedentity t where id = :id").setParameter("id", p.getProfilepicture()).list().get(0);
-        // Delete profile picture
-        session.createQuery("delete from Timedentity where id = :id").setParameter("id", profilePic.getId()).executeUpdate();
-        // Delete person
-        session.createQuery("delete from Timedentity where id = :id").setParameter("id", id).executeUpdate();
+        Timedentity timedentity = session.get(Timedentity.class, id);
+        if (timedentity != null) {
+            session.getTransaction().begin();
+            session.delete(timedentity);
+            session.getTransaction().commit();
+        } else {
+            session.close();
+            return notFound();
+        }
         session.close();
         return ok();
     }

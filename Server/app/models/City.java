@@ -39,9 +39,7 @@ public class City {
         City city = (City) o;
 
         if (id != city.id) return false;
-        if (name != null ? !name.equals(city.name) : city.name != null) return false;
-
-        return true;
+        return name != null ? name.equals(city.name) : city.name == null;
     }
 
     @Override
