@@ -1,9 +1,6 @@
 package models;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.*;
 
 /**
  * Created by Henrik on 18/06/2017.
@@ -13,8 +10,22 @@ public class Account {
     private int profileid;
     private String email;
     private String password;
+    private int id;
+
 
     @Id
+    @Column(name = "id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+
+    @Basic
     @Column(name = "profileid")
     public int getProfileid() {
         return profileid;
@@ -63,4 +74,5 @@ public class Account {
         result = 31 * result + (password != null ? password.hashCode() : 0);
         return result;
     }
+
 }

@@ -11,6 +11,7 @@ import play.mvc.Controller;
 import play.mvc.Http;
 import play.mvc.Result;
 import returnTypes.*;
+import utils.Globals;
 import utils.SessionHandler;
 import utils.UploadFile;
 import utils.Util;
@@ -298,7 +299,7 @@ public class ProfileController extends Controller {
             filename = String.valueOf(Math.abs(file.hashCode())) + "." + extension;
             File definiteFile = new File("public/" + filename);
             if (file.renameTo(definiteFile)) {
-                return ok(Json.toJson(new UploadFile(fileType, filename)));
+                return ok(Json.toJson(new UploadFile(fileType, Globals.thisFileHost + filename)));
             } else {
                 return internalServerError();
             }
@@ -379,16 +380,17 @@ public class ProfileController extends Controller {
                     "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
             LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
             Timedentity bornTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", bornEvent.getPostid()).list().get(0);
-            Date[] dates = Util.getDates(bornTE.getTimeid());
+            Date[] dates = Util.getDates(bornTE.getId());
             System.out.println(Json.toJson(dates));
-//            Singletime time = (Singletime) session.createQuery("from Singletime where timeid = :timeid").setParameter("timeid", diedTE.getTimeid()).list().get(0);
             String[] times;
             if (dates.length == 2) {
                 times = new String[]{dates[0].toString(), dates[1].toString()};
                 System.out.println("Times");
                 System.out.println(Json.toJson(times));
             } else {
+                System.out.println("Time");
                 times = new String[]{dates[0].toString()};
+                System.out.println(Json.toJson(times));
             }
 
             bornEventResult = new LocatedEventResult(bornEvent.getPostid(), locationResult, bornEvent.getName(), bornEvent.getDescription(), times, getEventMedia(session, bornEvent.getPostid()));
@@ -434,7 +436,6 @@ public class ProfileController extends Controller {
         }
 
         ArrayList<String[]> times = new ArrayList<>();
-        int i = 0;
         for (Event event : events) {
             boolean subEvent = false;
             int teId = -1;
@@ -454,6 +455,15 @@ public class ProfileController extends Controller {
             query.setParameter("timeid", teId);
             for (Timeinterval ti : (List<Timeinterval>) query.list()) {
                 times.add(new String[]{ti.getBegintime().toString(), ti.getEndtime().toString()});
+            }
+
+            Date[] dates = Util.getDates(event.getPostid());
+            System.out.println(event.getPostid());
+            System.out.println(Json.toJson(dates));
+            String[] dateStrings = new String[dates.length];
+            for (int j = 0; j < dateStrings.length; j++) {
+                dateStrings[j] = dates[j].toString();
+                System.out.println("Datestring: " + dateStrings[j]);
             }
 
             // Located event?
@@ -478,7 +488,7 @@ public class ProfileController extends Controller {
                         "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
                 LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
-                LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
+                LocatedEventResult locatedEventResult = new LocatedEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), dateStrings, getEventMedia(session, event.getPostid()));
                 if (locatedEventResult.id != bornEventResult.id) {
                     if (diedEventResult == null || diedEventResult.id != locatedEventResult.id) {
                         try {
@@ -497,6 +507,12 @@ public class ProfileController extends Controller {
                 query = session.createQuery("from Workevent where eventid = :eventId");
                 query.setParameter("eventId", event.getPostid());
                 Workevent workevent = null;
+
+                for (int j = 0; j < dateStrings.length; j++) {
+                    dateStrings[j] = dates[j].toString();
+                    System.out.println("Datestring: " + dateStrings[j]);
+                }
+
                 if (query.list().size() > 0) {
                     workevent = (Workevent) query.list().get(0);
                 }
@@ -516,7 +532,7 @@ public class ProfileController extends Controller {
                     LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
                     Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
-                    WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, workevent.getEventid()));
+                    WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), dateStrings, getEventMedia(session, workevent.getEventid()));
                     try {
                         if (Util.isAllowedToSeeEntity(requesterId, workevent.getEventid())) {
                             eventResults.add(workEventResult);
@@ -548,7 +564,7 @@ public class ProfileController extends Controller {
                                 "inner join Country co on co.id = pc.countryid where l.id = " + location.getId()).list();
                         LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
-                        MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
+                        MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), dateStrings, getEventMedia(session, event.getPostid()));
                         try {
                             if (Util.isAllowedToSeeEntity(requesterId, moveevent.getEventid())) {
                                 eventResults.add(moveEventResult);
@@ -561,7 +577,7 @@ public class ProfileController extends Controller {
             }
             // "Normal" event
             if (!subEvent) {
-                EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), times.get(i), getEventMedia(session, event.getPostid()));
+                EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), dateStrings, getEventMedia(session, event.getPostid()));
                 try {
                     if (Util.isAllowedToSeeEntity(requesterId, event.getPostid())) {
                         eventResults.add(eventResult);
@@ -570,7 +586,6 @@ public class ProfileController extends Controller {
                     e.printStackTrace();
                 }
             }
-            i++;
         }
 
 

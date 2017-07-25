@@ -64,4 +64,25 @@ public class GroupController extends Controller {
         session.close();
         return ok(Json.toJson(ownedGroups));
     }
+
+    @Transactional
+    public Result deleteGroup(Integer groupid) {
+        if (!request().hasHeader("requester")) {
+            return forbidden("No requester specified");
+        }
+        Integer requesterId = Integer.parseInt(request().getHeader("requester"));
+        System.out.println("REQESTOR:" +  requesterId);
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Group group = session.get(Group.class, groupid);
+        if (group.getOwner() == requesterId) {
+            session.getTransaction().begin();
+            session.delete(group);
+            session.getTransaction().commit();
+        } else {
+            session.close();
+            return forbidden();
+        }
+        session.close();
+        return ok();
+    }
 }

@@ -37,7 +37,7 @@ public class RelationshipController extends Controller {
         }
         Integer requesterId = Integer.parseInt(request().getHeader("requester"));
 
-        if (Util.getTypeOfEntity(requesterId) != EntityType.Profile) {
+        if (Util.getTypeOfEntity(requesterId) != EntityType.Profile && Util.getTypeOfEntity(requesterId) != EntityType.Account) {
             return badRequest("Invalid requester");
         }
 

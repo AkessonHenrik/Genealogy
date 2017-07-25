@@ -5,5 +5,6 @@ public enum EntityType {
     Relationship,
     Parent,
     Event,
-    Media
+    Media,
+    Account
 }

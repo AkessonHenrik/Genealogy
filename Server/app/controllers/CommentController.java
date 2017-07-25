@@ -1,6 +1,7 @@
 package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import models.Account;
 import models.Comment;
 import models.Profile;
 import org.hibernate.Query;
@@ -44,13 +45,17 @@ public class CommentController extends Controller {
 
         Comment comment = new Comment();
         comment.setPostid(body.get("postid").asInt());
-        comment.setCommenter(body.get("commenterid").asInt());
+        Integer commenterId = body.get("commenterid").asInt();
+        comment.setCommenter(commenterId);
         comment.setPostedon(new Timestamp(System.currentTimeMillis()));
         comment.setContent(body.get("content").asText());
         session.save(comment);
+        System.out.println("Commenter: " + commenterId);
 
-        Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", comment.getCommenter()).list().get(0);
-        CommentResult result = new CommentResult(new Date(comment.getPostedon().getTime()).toString(), comment.getContent(), p.getFirstname() + " " + p.getLastname());
+        Account account = session.get(Account.class, commenterId);
+        Profile profile = session.get(Profile.class, account.getProfileid());
+
+        CommentResult result = new CommentResult(new Date(comment.getPostedon().getTime()).toString(), comment.getContent(), profile.getFirstname() + " " + profile.getLastname());
         session.close();
         return ok(Json.toJson(result));
     }

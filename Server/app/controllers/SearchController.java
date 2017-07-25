@@ -26,7 +26,9 @@ public class SearchController extends Controller {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
         String firstname = request().body().asJson().get("firstname").asText();
-        String lastname = request().body().asJson().get("lastname").asText();
+        String lastname = "";
+        if (request().body().asJson().has("lastname"))
+            lastname = request().body().asJson().get("lastname").asText();
 
         if (firstname.length() == 0 && lastname.length() == 0) {
             session.close();

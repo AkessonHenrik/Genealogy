@@ -191,7 +191,7 @@ public class Util {
     }
 
     /**
-     * @param id: entity whose Dates need to be retrieved
+     * @param entityid: entity whose Dates need to be retrieved
      * @return date(s) of entity. Array of length 1 if entity is associated to a Singletime, length 2 if Timeinterval
      */
     public static Date[] getDates(int entityid) {
@@ -454,6 +454,7 @@ public class Util {
 
 
     public static boolean isAllowedToSeeEntity(Integer requesterId, int timedEntityId) throws Exception {
+        System.out.println("REQUESTOR: " + requesterId);
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
         Query query = session.createQuery("from Timedentity where id = :id").setParameter("id", timedEntityId);
@@ -462,6 +463,7 @@ public class Util {
             throw new Exception("Invalid parameters");
         }
         timedentity = (Timedentity) query.list().get(0);
+
         if (timedentity.getVisibility() == 0) {
             // Public
             session.close();
@@ -484,8 +486,16 @@ public class Util {
                 return true;
             }
 
+
             // Is requester the account associated to the owner of the entity?
             int ownerOfEntity = ((Timedentityowner) session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list().get(0)).getPeopleorrelationshipid();
+            System.out.println("REQUESTOR: " + requesterId);
+            if (session.createQuery("from Account where profileid = :pid and id = :id").setParameter("pid", ownerOfEntity).setParameter("id", requesterId).list().size() > 0) {
+                System.out.println("HEYO");
+                session.close();
+                return true;
+            }
+
             System.out.println("Owner: " + ownerOfEntity);
             query = session.createQuery("from Ghost where profileid = :id").setParameter("id", ownerOfEntity);
             if (query.list().size() > 0) {
@@ -522,11 +532,6 @@ public class Util {
             }
 
             // A limited visibility is by definition forbidden to non registered users
-            // Check if requesterId is a profile
-            if (session.createQuery("from Profile where peopleentityid = :id").setParameter("id", requesterId).list().size() == 0) {
-                session.close();
-                return false;
-            }
 
             // Is requester owner of the entity?
             query = session.createQuery("from Timedentityowner where timedentityid = :id and peopleorrelationshipid = :requesterId").setParameter("id", timedEntityId).setParameter("requesterId", requesterId);
@@ -542,7 +547,14 @@ public class Util {
 
             // Is requester the account associated to the owner of the entity?
             int ownerOfEntity = ((Timedentityowner) session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list().get(0)).getPeopleorrelationshipid();
-
+            System.out.println("OWNER: " + ownerOfEntity);
+            // Is requester the account associated to the owner of the entity?
+            System.out.println("REQUESTOR: " + requesterId);
+            if (session.createQuery("from Account where profileid = :pid and id = :id").setParameter("pid", ownerOfEntity).setParameter("id", requesterId).list().size() > 0) {
+                System.out.println("HEYO");
+                session.close();
+                return true;
+            }
             query = session.createQuery("from Ghost where profileid = :id").setParameter("id", ownerOfEntity);
             if (query.list().size() > 0) {
                 Ghost ghost = (Ghost) query.list().get(0);
@@ -671,23 +683,27 @@ public class Util {
 
     public static EntityType getTypeOfEntity(int timedentityId) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        if (session.createQuery("from Profile where peopleentityid = :id").setParameter("id", timedentityId).list().size() > 0) {
+        if (session.get(Profile.class, timedentityId) != null) {
             session.close();
             return EntityType.Profile;
         }
-        if (session.createQuery("from Relationship where peopleentityid = :id").setParameter("id", timedentityId).list().size() > 0) {
+        if (session.get(Account.class, timedentityId) != null) {
+            session.close();
+            return EntityType.Account;
+        }
+        if (session.get(Relationship.class, timedentityId) != null) {
             session.close();
             return EntityType.Relationship;
         }
-        if (session.createQuery("from Parentsof where timedentityid = :id").setParameter("id", timedentityId).list().size() > 0) {
+        if (session.get(Parentsof.class, timedentityId) != null) {
             session.close();
             return EntityType.Parent;
         }
-        if (session.createQuery("from Event where postid = :id").setParameter("id", timedentityId).list().size() > 0) {
+        if (session.get(Event.class, timedentityId) != null) {
             session.close();
             return EntityType.Event;
         }
-        if (session.createQuery("from Media where postid = :id").setParameter("id", timedentityId).list().size() > 0) {
+        if (session.get(Media.class, timedentityId) != null) {
             session.close();
             return EntityType.Media;
         }
