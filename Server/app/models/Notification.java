@@ -7,6 +7,7 @@ public class Notification {
     private int id;
     private String content;
     private Integer accountid;
+    private Integer entityid;
 
     @Id
     @Column(name = "id")
@@ -59,5 +60,15 @@ public class Notification {
         result = 31 * result + (content != null ? content.hashCode() : 0);
         result = 31 * result + (accountid != null ? accountid.hashCode() : 0);
         return result;
+    }
+
+    @Basic
+    @Column(name = "entityid")
+    public Integer getEntityid() {
+        return entityid;
+    }
+
+    public void setEntityid(Integer entityid) {
+        this.entityid = entityid;
     }
 }

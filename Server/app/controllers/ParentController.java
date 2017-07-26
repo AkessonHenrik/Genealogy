@@ -15,6 +15,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
+import static utils.Util.parseDateFromString;
+
 public class ParentController extends Controller {
     Session session;
 
@@ -29,18 +31,20 @@ public class ParentController extends Controller {
         int parentId = jsonNode.get("parent").asInt();
         int childId = jsonNode.get("child").asInt();
 
-
         SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd");
 
         Date begin = null;
         Date end = null;
 
         session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+
         if (session.createQuery("from Account where id = :id").setParameter("id", requesterId).list().size() == 0) {
             session.close();
             return badRequest("No account associated to id " + requesterId);
         }
         session.getTransaction().begin();
+
 
         if (!jsonNode.get("time").get("begin").asText().equals("null")) {
             try {
@@ -60,6 +64,7 @@ public class ParentController extends Controller {
                 return badRequest("If parent type is not biological, a begin date should be given");
             }
         }
+
 
         int timeId;
         if (end == null) {
@@ -111,6 +116,47 @@ public class ParentController extends Controller {
         }
 
         session.save(parent);
+
+        setParentEvent(parent, session);
+
+
+        // Notifications
+        // Parent is profile
+        Relationship parentRel = session.get(Relationship.class, parent.getParentsid());
+        Profile childProfile = session.get(Profile.class, parent.getChildid());
+        Profile[] profiles;
+        if (parentRel != null) {
+            profiles = new Profile[]{session.get(Profile.class, parentRel.getProfile1()), session.get(Profile.class, parentRel.getProfile2())};
+
+        } else {
+            profiles = new Profile[]{session.get(Profile.class, parent.getParentsid())};
+        }
+        for (Profile p : profiles) {
+            int pOwner = Util.getOwnerOfProfile(p.getPeopleentityid());
+            if (pOwner != requesterId) {
+                Notification notification = new Notification();
+                notification.setEntityid(parent.getTimedentityid());
+                notification.setAccountid(pOwner);
+                notification.setContent(session.get(Account.class, requesterId).getEmail() + " set " + childProfile.getFirstname() + " " + childProfile.getLastname() + " as a " + parentType + " parent of " + childProfile.getFirstname() + " " + childProfile.getLastname());
+                session.save(notification);
+            }
+        }
+
+        int ownerOfChild = Util.getOwnerOfProfile(childId);
+        if (ownerOfChild != requesterId) {
+            Notification notification = new Notification();
+            notification.setAccountid(ownerOfChild);
+            notification.setEntityid(parent.getTimedentityid());
+            String parents = "";
+            for (int i = 0; i < profiles.length; i++) {
+                parents += profiles[i].getFirstname() + " " + profiles[i].getLastname();
+                if (i != profiles.length - 1) {
+                    parents += " and ";
+                }
+            }
+            notification.setContent(session.get(Account.class, requesterId).getEmail() + " set you as an " + parentType + " child of " + parents);
+            session.save(notification);
+        }
 
         Timedentityowner owner;
         // If parent is a relationship, both profiles should be owners
@@ -176,5 +222,167 @@ public class ParentController extends Controller {
             return -1;
         }
         return times.get(0).getTimeid();
+    }
+
+
+    public Result updateParent(Integer id) {
+        if (!request().hasHeader("requester")) {
+            return forbidden();
+        }
+        Integer requesterId = Integer.parseInt(request().getHeader("requester"));
+
+        try {
+            if (!Util.isAllowedToSeeEntity(requesterId, id)) {
+                System.out.println("Can't touch this");
+                return forbidden();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        Timedentityowner owner = session.get(Timedentityowner.class, requesterId);
+        System.out.println("owner");
+
+        Parentsof parentsof = session.get(Parentsof.class, id);
+        boolean canAccess = false;
+        if (Util.getOwnerOfProfile(parentsof.getChildid()) == requesterId) {
+            canAccess = true;
+        }
+        if (owner == null && !canAccess) {
+
+            // Get parent people
+            Relationship parentRelationship = session.get(Relationship.class, parentsof.getParentsid());
+            if (parentRelationship != null) {
+                int p1 = parentRelationship.getProfile1();
+                int p2 = parentRelationship.getProfile2();
+                if (session.createQuery("from Ghost where profileid = :p1 and owner = :requester").setParameter("p1", p1).setParameter("requester", requesterId).list().size() == 1) {
+                    canAccess = true;
+                } else if (session.createQuery("from Ghost where profileid = :p1 and owner = :requester").setParameter("p1", p2).setParameter("requester", requesterId).list().size() == 1) {
+                    canAccess = true;
+                } else if (Util.getOwnerOfProfile(p1) == requesterId) {
+                    canAccess = true;
+                } else if (Util.getOwnerOfProfile(p2) == requesterId) {
+                    canAccess = true;
+                }
+            } else {
+                Profile parent = session.get(Profile.class, parentsof.getParentsid());
+                if (parent.getPeopleentityid() == requesterId) {
+                    canAccess = true;
+                } else if (Util.getOwnerOfProfile(parent.getPeopleentityid()) == requesterId) {
+                    canAccess = true;
+                }
+            }
+
+        } else if (owner.getPeopleorrelationshipid() == requesterId || Util.getOwnerOfProfile(owner.getPeopleorrelationshipid()) == requesterId) {
+            canAccess = true;
+        }
+        if (!canAccess) {
+            System.out.println("lolilol");
+            session.close();
+            return forbidden();
+        }
+
+        JsonNode body = request().body().asJson();
+
+        session.getTransaction().begin();
+
+        if (body.has("time")) {
+            Date[] dates = null;
+            if (body.get("time").size() == 1) {
+                dates = new Date[]{parseDateFromString(body.get("time").get(0).asText())};
+            } else if (body.get("time").size() == 2) {
+                dates = new Date[]{parseDateFromString(body.get("time").get(0).asText()), parseDateFromString(body.get("time").get(1).asText())};
+            }
+            if (dates != null) {
+                int timeid = Util.getOrCreateTime(dates);
+                Timedentity timedentity = session.get(Timedentity.class, id);
+                timedentity.setTimeid(timeid);
+                session.save(timedentity);
+            }
+        }
+
+        if (body.has("type")) {
+            String parentTypeString = body.get("type").asText();
+            int parentTypeInt = getParentTypeAsIntFromString(parentTypeString);
+            if (parentTypeInt == -1) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest("Invalid parent type");
+            }
+            parentsof.setParentType(parentTypeInt);
+            if (parentTypeInt == 0) {
+                Timedentity parentEntity = session.get(Timedentity.class, parentsof.getTimedentityid());
+                parentEntity.setTimeid(Util.getOrCreateTime(Util.getDates(parentsof.getChildid())));
+                session.saveOrUpdate(parentEntity);
+            }
+            session.save(parentsof);
+
+            setParentEvent(parentsof, session);
+
+        }
+        if (body.has("visibility")) {
+            if (!Util.setVisibilityToEntity(parentsof.getTimedentityid(), body.get("visibility"))) {
+                session.getTransaction().rollback();
+                session.close();
+                return badRequest("Visibility is invalid");
+            }
+        }
+        session.getTransaction().commit();
+        session.close();
+        return ok();
+    }
+
+    public static int getParentTypeAsIntFromString(String parentTypeString) {
+        if (parentTypeString.equals("biological")) {
+            return 0;
+        } else if (parentTypeString.equals("adoptive")) {
+            return 1;
+        } else if (parentTypeString.equals("guardian")) {
+            return 2;
+        } else {
+            return -1;
+        }
+    }
+
+    private static void setParentEvent(Parentsof parent, Session session) {
+        Post post = session.get(Post.class, parent.getTimedentityid());
+        if (post == null) {
+            post = new Post();
+            post.setTimedentityid(parent.getTimedentityid());
+            session.save(post);
+        }
+
+        Event event = session.get(Event.class, parent.getTimedentityid());
+        if (event == null)
+            event = new Event();
+        event.setPostid(post.getTimedentityid());
+        int childId = parent.getChildid();
+        int parentId = parent.getParentsid();
+        int parentType = parent.getParentType();
+        Profile child = session.get(Profile.class, childId);
+
+        Relationship parentRelationship = session.get(Relationship.class, parentId);
+        String parentdescription;
+        if (parentRelationship != null) {
+            Profile p1 = session.get(Profile.class, parentRelationship.getProfile1());
+            Profile p2 = session.get(Profile.class, parentRelationship.getProfile2());
+            parentdescription = p1.getFirstname() + " and " + p2.getFirstname();
+        } else {
+            Profile parentProfile = session.get(Profile.class, parentId);
+            parentdescription = parentProfile.getFirstname();
+        }
+        if (parentType == 0) {
+            event.setName(child.getFirstname() + " is born");
+            event.setDescription(child.getFirstname() + " is the biological child of " + parentdescription);
+        } else if (parentType == 1) {
+            event.setName("Adopted");
+            event.setDescription(child.getFirstname() + " was adopted by " + parentdescription);
+        } else {
+            event.setName("Guarded");
+            event.setDescription(child.getFirstname() + " is guarded by " + parentdescription);
+        }
+        session.save(event);
     }
 }

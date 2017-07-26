@@ -7,12 +7,15 @@ import org.hibernate.Session;
 import play.db.jpa.Transactional;
 import play.libs.Json;
 import play.mvc.Controller;
+import play.mvc.Http;
 import play.mvc.Result;
 import returnTypes.ClaimResult;
 import utils.SessionHandler;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by Henrik on 18/06/2017.
@@ -227,6 +230,47 @@ public class AccountController extends Controller {
         }
         session.getTransaction().begin();
         session.delete(notification);
+        session.getTransaction().commit();
+        session.close();
+        return ok();
+    }
+
+
+    @Transactional
+    public Result updateAccount(Integer id) {
+        System.out.println("HAKLAS");
+        JsonNode jsonNode = request().body().asJson();
+        System.out.println(jsonNode);
+        if (!request().hasHeader("requester")) {
+            return forbidden();
+        }
+        if (!(Integer.parseInt(request().getHeader("requester")) == id)) {
+            return forbidden();
+        }
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Account account = session.get(Account.class, id);
+        if (jsonNode.has("email")) {
+            if (session.createQuery("from Account where email = :email").setParameter("email", jsonNode.get("email").asText()).list().size() > 0) {
+                session.close();
+                return forbidden("There already is a registered account with this email");
+            } else {
+                Pattern re = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
+                String newEmail = jsonNode.get("email").asText().toString();
+                Matcher matcher = re.matcher(newEmail);
+                if(!matcher.find()) {
+                    session.close();
+                    return badRequest("Invalid email format");
+                }
+                System.out.println("NEW EMAIL: " + newEmail);
+                account.setEmail(newEmail);
+            }
+        }
+        if (jsonNode.has("password")) {
+            String newPassword = jsonNode.get("password").asText();
+            account.setPassword(newPassword);
+        }
+        session.getTransaction().begin();
+        session.saveOrUpdate(account);
         session.getTransaction().commit();
         session.close();
         return ok();

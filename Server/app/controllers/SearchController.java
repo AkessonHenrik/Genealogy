@@ -35,7 +35,7 @@ public class SearchController extends Controller {
             return badRequest("Empty search parameters");
         }
 
-        Query query = session.createQuery("select peopleentityid from Profile where firstname like '%" + firstname + "%' and lastname like '%" + lastname + "%'");
+        Query query = session.createQuery("select peopleentityid from Profile where lower(firstname) like lower('%" + firstname + "%') and lower(lastname) like lower('%" + lastname + "%')");
         List<Integer> ids = query.list();
         List<SearchResult> results = new ArrayList<>();
 

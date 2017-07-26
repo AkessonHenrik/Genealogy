@@ -19,6 +19,10 @@ public class Profile {
     private Integer died;
     private Integer gender;
 
+    public void setGender(int gender) {
+        this.gender = gender;
+    }
+
     @Id
     @Column(name = "peopleentityid")
     public int getPeopleentityid() {

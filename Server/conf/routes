@@ -49,6 +49,7 @@ GET           /owned/groups/:id                    @controllers.GroupController.
 PATCH         /event/:eventid                      @controllers.EventController.updateEvent(eventid: Integer)
 
 PATCH         /relationship/:id                    @controllers.RelationshipController.updateRelationship(id: Integer)
+PATCH         /parents/:id                         @controllers.ParentController.updateParent(id: Integer)
 
 DELETE        /relationship/:id                    @controllers.RelationshipController.deleteRelationship(id: Integer)
 
@@ -63,3 +64,5 @@ DELETE        /notification/:notificationId        @controllers.AccountControlle
 GET           /notification/:accountId             @controllers.AccountController.getNotifications(accountId: Integer)
 
 DELETE        /group/:groupid                      @controllers.GroupController.deleteGroup(groupid: Integer)
+
+PATCH         /signup/:id                          @controllers.AccountController.updateAccount(id: Integer)

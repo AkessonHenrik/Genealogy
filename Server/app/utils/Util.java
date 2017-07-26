@@ -227,8 +227,13 @@ public class Util {
         System.out.println(visibility);
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Timedentity entity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", entityId).list().get(0);
+        System.out.println(Json.toJson(entity));
+        session.getTransaction().begin();
+
         if (visibility.has("visibility")) {
             if (visibility.get("visibility").asText().equals("private")) {
+
+                System.out.println("PRIVATATE");
                 entity.setVisibility(1);
                 session.saveOrUpdate(entity);
             } else if (visibility.get("visibility").asText().equals("public")) {
@@ -240,7 +245,6 @@ public class Util {
                 JsonNode included = visibility.get("included");
                 JsonNode excluded = visibility.get("excluded");
 
-                session.getTransaction().begin();
 
                 if (included.has("groups")) {
                     for (int i = 0; i < included.get("groups").size(); i++) {
@@ -319,15 +323,15 @@ public class Util {
                     }
                 }
                 session.save(entity);
-                session.getTransaction().commit();
 
 
             } else {
+                session.getTransaction().rollback();
                 session.close();
                 return false;
             }
         }
-
+        session.getTransaction().commit();
         session.close();
         return true;
     }
@@ -721,6 +725,25 @@ public class Util {
         Province province = session.get(Province.class, provincecountry.getProvinceid());
         City city = session.get(City.class, cityprovince.getCityid());
         return new LocationResult(city.getName(), province.getName(), country.getName());
+    }
+
+
+    public static int getOwnerOfProfile(int profileid) {
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Ghost ghost = session.get(Ghost.class, profileid);
+        if (ghost == null) {
+            // This profile is associated to an account
+            Query query = session.createQuery("from Account where profileid = :id").setParameter("id", profileid);
+            if (query.list().size() == 0) {
+            }
+
+            Account account = (Account) query.list().get(0);
+            session.close();
+            return account.getId();
+        } else {
+            session.close();
+            return ghost.getOwner();
+        }
     }
 }
 

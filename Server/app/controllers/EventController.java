@@ -357,7 +357,15 @@ public class EventController {
 
         // Add event type
         if (body.has("type")) {
+
             String type = body.get("type").asText();
+            if (!type.equals("LocatedEvent")) {
+                if (session.createQuery("from Profile where born = :id or died = :id").setParameter("id", eventid).list().size() > 0) {
+                    session.getTransaction().rollback();
+                    session.close();
+                    return forbidden("This event cannot have another type");
+                }
+            }
             List<String> eventTypes = new ArrayList<>();
             eventTypes.add("LocatedEvent");
             eventTypes.add("MoveEvent");
@@ -367,6 +375,7 @@ public class EventController {
                 session.close();
                 return badRequest("Invalid event type");
             }
+
             Integer locationId = null;
             if (body.has("location")) {
                 String city = body.get("location").get("city").asText();
@@ -404,12 +413,13 @@ public class EventController {
                         return badRequest("No location specified for new Locatedevent");
                     }
                     locatedevent.setEventid(eventid);
-                    session.save(locatedevent);
+                    session.saveOrUpdate(locatedevent);
                 } else {
                     if (locationId != null)
                         locatedevent.setLocationid(locationId);
                 }
             } else if (type.equals("WorkEvent")) {
+
                 System.out.println("Work event");
                 // First, remove other subevents
                 Locatedevent locatedevent = session.get(Locatedevent.class, eventid);
@@ -461,7 +471,7 @@ public class EventController {
                 } else if (!wasAWorkEvent) {
                     return badRequest("No Workevent existed for this event. Please specify a position");
                 }
-                session.save(workevent);
+                session.saveOrUpdate(workevent);
 
             } else if (type.equals("MoveEvent")) {
                 // First, remove other subevents
@@ -494,7 +504,7 @@ public class EventController {
                     }
                     moveevent.setEventid(eventid);
                 }
-                session.save(moveevent);
+                session.saveOrUpdate(moveevent);
             }
         }
         if (body.has("media")) {
@@ -530,10 +540,10 @@ public class EventController {
                 Eventmedia eventmedia = new Eventmedia();
                 eventmedia.setEventid(eventid);
                 eventmedia.setMediaid(media.getPostid());
-                session.save(eventmedia);
+                session.saveOrUpdate(eventmedia);
             }
         }
-        session.save(event);
+        session.saveOrUpdate(event);
         session.getTransaction().commit();
         session.close();
         return ok();

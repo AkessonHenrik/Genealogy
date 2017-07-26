@@ -48,10 +48,5 @@
         <mapping class="models.Workevent"/>
         <mapping class="models.Grouppeople"/>
         <mapping class="models.Claim"/>
-        <!-- <property name="connection.username"/> -->
-        <!-- <property name="connection.password"/> -->
-
-        <!-- DB schema will be updated if needed -->
-        <!-- <property name="hbm2ddl.auto">update</property> -->
     </session-factory>
 </hibernate-configuration>

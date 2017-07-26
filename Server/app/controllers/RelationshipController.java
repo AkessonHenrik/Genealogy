@@ -43,6 +43,8 @@ public class RelationshipController extends Controller {
 
         int profile1 = jsonNode.get("profile1").asInt();
         int profile2 = jsonNode.get("profile2").asInt();
+
+
         String relTypeString = jsonNode.get("type").asText();
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         if (session.createQuery("from Account where id = :id").setParameter("id", requesterId).list().size() == 0) {
@@ -132,6 +134,50 @@ public class RelationshipController extends Controller {
                 session.close();
                 return badRequest("Invalid visibility type");
             }
+        }
+        int p1Owner = Util.getOwnerOfProfile(profile1);
+        System.out.println("Owner of 1: " + p1Owner);
+        int p2Owner = Util.getOwnerOfProfile(profile2);
+        System.out.println("Owner of 2: " + p2Owner);
+
+        Profile pr1 = session.get(Profile.class, profile1);
+        Profile pr2 = session.get(Profile.class, profile2);
+        Account account = session.get(Account.class, p1Owner);
+        if (p1Owner != p2Owner) {
+
+            Notification notification = new Notification();
+            notification.setEntityid(relationship.getPeopleentityid());
+            if (requesterId == p1Owner) {
+                System.out.println("Profile 1 is requester");
+                notification.setAccountid(p2Owner);
+                notification.setContent("A relationship was added between " + pr1.getFirstname() + " and " + pr2.getLastname() + " by " + account.getEmail());
+
+                session.save(notification);
+            } else if (requesterId == p2Owner) {
+                System.out.println("Profile 2 is requester");
+
+                account = session.get(Account.class, p2Owner);
+                notification.setContent("A relationship was added between " + pr1.getFirstname() + " and " + pr2.getLastname() + " by " + account.getEmail());
+                notification.setAccountid(p2Owner);
+                session.save(notification);
+            } else {
+                account = session.get(Account.class, requesterId);
+                Notification n1 = new Notification();
+                n1.setEntityid(relationship.getPeopleentityid());
+                n1.setContent("A relationship was added between " + pr1.getFirstname() + " and " + pr2.getLastname() + " by " + account.getEmail());
+                n1.setAccountid(p1Owner);
+                session.save(n1);
+                Notification n2 = new Notification();
+                n2.setEntityid(relationship.getPeopleentityid());
+                n2.setContent("A relationship was added between " + pr1.getFirstname() + " and " + pr2.getLastname() + " by " + account.getEmail());
+                n2.setAccountid(p2Owner);
+                session.save(n2);
+            }
+        } else if (p1Owner != requesterId) {
+            System.out.println("Same owner but different requester");
+            Notification notification = new Notification();
+            notification.setEntityid(relationship.getPeopleentityid());
+            notification.setContent("A relationship was added between " + pr1.getFirstname() + " and " + pr2.getLastname() + " by " + account.getEmail());
         }
         session.getTransaction().commit();
         session.close();
@@ -634,4 +680,7 @@ public class RelationshipController extends Controller {
         session.close();
         return forbidden();
     }
+
+
+
 }

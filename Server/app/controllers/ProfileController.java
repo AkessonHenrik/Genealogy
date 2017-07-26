@@ -214,6 +214,7 @@ public class ProfileController extends Controller {
         session.getTransaction().commit();
 
         if (jsonNode.has("visibility")) {
+            System.out.println("Got visibility!" + jsonNode.get("visibility").asText());
             if (!Util.setVisibilityToEntity(profile.getPeopleentityid(), jsonNode.get("visibility"))) {
                 session.getTransaction().rollback();
                 session.close();
@@ -315,7 +316,7 @@ public class ProfileController extends Controller {
         // Get profile SearchResult and model
         Timedentity t = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", id).list().get(0);
 
-        if (!request().hasHeader("requester") && t.getVisibility() != 0) {
+        if (!request().hasHeader("requester") || t.getVisibility() != 0) {
             session.close();
             return badRequest("No requester header specified");
         }
@@ -328,7 +329,7 @@ public class ProfileController extends Controller {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id).list().get(0);
+        Profile p = session.get(Profile.class, id);
         String queryString = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id;
         Query query = session.createQuery(queryString);
         SearchResult profile;
@@ -363,7 +364,7 @@ public class ProfileController extends Controller {
         query.setParameter("eventId", p.getBorn());
         Locatedevent born;
         LocatedEventResult bornEventResult = null;
-        born = (Locatedevent) query.list().get(0);
+        born = session.get(Locatedevent.class, p.getBorn());
         if (born != null) {
             // Get event
             Event bornEvent = (Event) session.createQuery("from Event where postid = " + born.getEventid()).list().get(0);
@@ -605,7 +606,17 @@ public class ProfileController extends Controller {
             return ok(Json.toJson(true));
         }
 
+
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        // Is entity a profile?
+        if (session.get(Profile.class, timedEntityId) != null) {
+            if (Util.getOwnerOfProfile(timedEntityId) != ownerId) {
+                return ok(Json.toJson(false));
+            } else if (Util.getOwnerOfProfile(timedEntityId) == ownerId) {
+                return ok(Json.toJson(true));
+            }
+        }
         Query query = session.createQuery("from Ghost where profileid = :timedEntityId and owner = :ownerId")
                 .setParameter("timedEntityId", timedEntityId)
                 .setParameter("ownerId", ownerId);
@@ -621,6 +632,11 @@ public class ProfileController extends Controller {
                     if (ghost != null && ghost.getOwner() == ownerId) {
                         session.close();
                         return ok(Json.toJson(true));
+                    } else {
+                        if(Util.getOwnerOfProfile(owner.getPeopleorrelationshipid()) == ownerId) {
+                            session.close();
+                            return ok(Json.toJson(true));
+                        }
                     }
                 }
             }
