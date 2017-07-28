@@ -3,6 +3,7 @@ package controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import models.Account;
 import models.Comment;
+import models.Media;
 import models.Profile;
 import org.hibernate.Query;
 import org.hibernate.Session;
@@ -30,26 +31,23 @@ public class CommentController extends Controller {
         if (Util.isAllowedToSeeEntity(requesterId, postid)) {
             Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
-            Query query = session.createQuery(
-                    "select p.firstname, " +
-                            "p.lastname, " +
-                            "c.content, " +
-                            "c.postedon " +
-                            "from Comment c " +
-                            "inner join Profile p on c.commenter = p.peopleentityid " +
-                            "where c.postid = :postid");
 
-            query.setParameter("postid", postid);
-            List<Object[]> comments = query.list();
-            List<CommentResult> results = new ArrayList<>();
-            for (Object[] comment : comments) {
-                String name = comment[0].toString() + " " + comment[1].toString();
-                String content = comment[2].toString();
-                String date = new Date(((Timestamp) comment[3]).getTime()).toString();
-                results.add(new CommentResult(date, content, name));
+            List<Comment> comments = session.createQuery("from Comment where postid = :id").setParameter("id", postid).list();
+            List<CommentResult> commentResults = new ArrayList<>();
+            for (Comment comment : comments) {
+                String content = comment.getContent();
+                String time = new Date(comment.getPostedon().getTime()).toString();
+                Account account = session.get(Account.class, comment.getCommenter());
+                Profile profile = session.get(Profile.class, account.getProfileid());
+                String profilePicture = session.get(Media.class, profile.getProfilepicture()).getPath();
+                CommentResult commentResult = new CommentResult(time, content, profile.getFirstname() + " " + profile.getLastname());
+                commentResult.profilePicture = profilePicture;
+                if (Util.isAllowedToSeeEntity(requesterId, profile.getPeopleentityid()))
+                    commentResults.add(commentResult);
             }
+
             session.close();
-            return ok(Json.toJson(results));
+            return ok(Json.toJson(commentResults));
         } else {
             return forbidden();
         }
@@ -66,12 +64,12 @@ public class CommentController extends Controller {
         comment.setPostedon(new Timestamp(System.currentTimeMillis()));
         comment.setContent(body.get("content").asText());
         session.save(comment);
-        System.out.println("Commenter: " + commenterId);
 
         Account account = session.get(Account.class, commenterId);
         Profile profile = session.get(Profile.class, account.getProfileid());
-
+        Media picture = session.get(Media.class, profile.getProfilepicture());
         CommentResult result = new CommentResult(new Date(comment.getPostedon().getTime()).toString(), comment.getContent(), profile.getFirstname() + " " + profile.getLastname());
+        result.profilePicture = picture.getPath();
         session.close();
         return ok(Json.toJson(result));
     }

@@ -1,4 +1,4 @@
-package utils;
+package returnTypes;
 
 /**
  * Created by Henrik on 15/07/2017.

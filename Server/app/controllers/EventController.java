@@ -10,7 +10,7 @@ import play.mvc.Result;
 import play.mvc.Results;
 import returnTypes.*;
 import utils.SessionHandler;
-import utils.UploadFile;
+import returnTypes.UploadFile;
 import utils.Util;
 
 import java.sql.Date;
@@ -218,12 +218,9 @@ public class EventController {
         Timedentity timedentity = session.get(Timedentity.class, id);
 
         Date[] dates = Util.getDates(timedentity.getId());
-        System.out.println(timedentity.getTimeid());
-        System.out.println(Json.toJson(dates));
         String[] dateStrings = new String[dates.length];
         for (int i = 0; i < dateStrings.length; i++) {
             dateStrings[i] = dates[i].toString();
-            System.out.println("Datestring: " + dateStrings[i]);
         }
 
         query = session.createQuery("from Event where postid = :id").setParameter("id", id);
@@ -342,7 +339,6 @@ public class EventController {
                 timedentity.setTimeid(Util.getOrCreateTime(new Date[]{Util.parseDateFromString(body.get("time").get(0).asText())}));
             } else if (body.get("time").size() == 2) {
                 Timedentity timedentity = session.get(Timedentity.class, eventid);
-                System.out.println(timedentity.getTimeid());
                 Date[] dates = new Date[]{Util.parseDateFromString(body.get("time").get(0).asText()), Util.parseDateFromString(body.get("time").get(1).asText())};
                 timedentity.setTimeid(Util.getOrCreateTime(dates));
             }
@@ -383,7 +379,6 @@ public class EventController {
                 String province = body.get("location").get("province").asText();
                 String country = body.get("location").get("country").asText();
                 locationId = createOrGetLocation(city, province, country);
-                System.out.println("New Location!: " + locationId);
             }
             if (type.equals("LocatedEvent")) {
                 Moveevent moveevent = session.get(Moveevent.class, eventid);
@@ -421,17 +416,14 @@ public class EventController {
                 }
             } else if (type.equals("WorkEvent")) {
 
-                System.out.println("Work event");
                 // First, remove other subevents
                 Locatedevent locatedevent = session.get(Locatedevent.class, eventid);
                 if (locatedevent != null) {
-                    System.out.println("Located event!");
                     if (locationId == null) { // Get former location
                         locationId = locatedevent.getLocationid();
                     }
                     session.delete(locatedevent);
                 }
-                System.out.println(locationId);
                 Moveevent moveevent = session.get(Moveevent.class, eventid);
                 if (moveevent != null) {
                     if (locationId == null) { // Get former location

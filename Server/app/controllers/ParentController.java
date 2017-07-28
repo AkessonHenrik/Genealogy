@@ -189,7 +189,6 @@ public class ParentController extends Controller {
 
         try {
             if (!Util.isAllowedToSeeEntity(requesterId, id)) {
-                System.out.println("Can't touch this");
                 return forbidden();
             }
         } catch (Exception e) {
@@ -199,7 +198,6 @@ public class ParentController extends Controller {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
         Timedentityowner owner = session.get(Timedentityowner.class, requesterId);
-        System.out.println("owner");
 
         Parentsof parentsof = session.get(Parentsof.class, id);
         boolean canAccess = false;

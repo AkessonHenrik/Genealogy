@@ -2,6 +2,7 @@ package controllers;
 
 import play.libs.Json;
 import play.mvc.*;
+import returnTypes.UploadFile;
 import utils.*;
 
 import java.io.File;

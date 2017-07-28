@@ -134,11 +134,6 @@ public class AccountController extends Controller {
         Profile profile = session.get(Profile.class, claiming.getProfileid());
         session.createQuery("delete from Timedentityowner where timedentityid = :id").setParameter("id", profile.getPeopleentityid()).executeUpdate();
 
-        Timedentityowner timedentityowner = new Timedentityowner();
-        timedentityowner.setPeopleorrelationshipid(account.getId());
-        timedentityowner.setTimedentityid(profile.getPeopleentityid());
-        session.save(timedentityowner);
-
         // If no profile is associated to the account yet, it will be set as account main profile
         if (account.getProfileid() == 0) {
             account.setProfileid(claim.getClaimedprofileid());

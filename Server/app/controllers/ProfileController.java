@@ -13,7 +13,6 @@ import play.mvc.Result;
 import returnTypes.*;
 import utils.Globals;
 import utils.SessionHandler;
-import utils.UploadFile;
 import utils.Util;
 
 import java.io.File;
@@ -53,9 +52,6 @@ public class ProfileController extends Controller {
                 }
             }
         }
-        System.out.println("=*=*=*=*=*=*=*=*=*=*=*=**=");
-        System.out.println(jsonNode);
-        System.out.println("=*=*=*=*=*=*=*=*=*=*=*=**=");
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
 
@@ -240,7 +236,6 @@ public class ProfileController extends Controller {
         session.getTransaction().commit();
 
         if (jsonNode.has("visibility")) {
-            System.out.println("Got visibility!" + jsonNode.get("visibility").asText());
             if (!Util.setVisibilityToEntity(profile.getPeopleentityid(), jsonNode.get("visibility"))) {
                 session.getTransaction().rollback();
                 session.close();
@@ -317,13 +312,9 @@ public class ProfileController extends Controller {
         }
 
         int requesterId = Integer.parseInt(request().getHeader("requester"));
-        try {
-            if (!Util.isAllowedToSeeEntity(requesterId, t.getId())) {
-                session.close();
-                return forbidden();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (!Util.isAllowedToSeeEntity(requesterId, t.getId())) {
+            session.close();
+            return forbidden();
         }
         Profile p = session.get(Profile.class, id);
         String queryString = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id;
@@ -378,16 +369,11 @@ public class ProfileController extends Controller {
             LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
             Timedentity bornTE = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", bornEvent.getPostid()).list().get(0);
             Date[] dates = Util.getDates(bornTE.getId());
-            System.out.println(Json.toJson(dates));
             String[] times;
             if (dates.length == 2) {
                 times = new String[]{dates[0].toString(), dates[1].toString()};
-                System.out.println("Times");
-                System.out.println(Json.toJson(times));
             } else {
-                System.out.println("Time");
                 times = new String[]{dates[0].toString()};
-                System.out.println(Json.toJson(times));
             }
 
             bornEventResult = new LocatedEventResult(bornEvent.getPostid(), locationResult, bornEvent.getName(), bornEvent.getDescription(), times, getEventMedia(session, bornEvent.getPostid()));
@@ -455,12 +441,9 @@ public class ProfileController extends Controller {
             }
 
             Date[] dates = Util.getDates(event.getPostid());
-            System.out.println(event.getPostid());
-            System.out.println(Json.toJson(dates));
             String[] dateStrings = new String[dates.length];
             for (int j = 0; j < dateStrings.length; j++) {
                 dateStrings[j] = dates[j].toString();
-                System.out.println("Datestring: " + dateStrings[j]);
             }
 
             // Located event?
@@ -507,7 +490,6 @@ public class ProfileController extends Controller {
 
                 for (int j = 0; j < dateStrings.length; j++) {
                     dateStrings[j] = dates[j].toString();
-                    System.out.println("Datestring: " + dateStrings[j]);
                 }
 
                 if (query.list().size() > 0) {
@@ -530,12 +512,8 @@ public class ProfileController extends Controller {
 
                     Company company = (Company) session.createQuery("from Company where id = " + workevent.getCompanyid()).list().get(0);
                     WorkEventResult workEventResult = new WorkEventResult(workevent.getEventid(), company.getName(), workevent.getPositionheld(), locationResult, event.getName(), event.getDescription(), dateStrings, getEventMedia(session, workevent.getEventid()));
-                    try {
-                        if (Util.isAllowedToSeeEntity(requesterId, workevent.getEventid())) {
-                            eventResults.add(workEventResult);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    if (Util.isAllowedToSeeEntity(requesterId, workevent.getEventid())) {
+                        eventResults.add(workEventResult);
                     }
                 }
                 if (!subEvent) {
@@ -562,12 +540,8 @@ public class ProfileController extends Controller {
                         LocationResult locationResult = new LocationResult((String) attrs.get(0)[0], (String) attrs.get(0)[1], (String) attrs.get(0)[2]);
 
                         MoveEventResult moveEventResult = new MoveEventResult(event.getPostid(), locationResult, event.getName(), event.getDescription(), dateStrings, getEventMedia(session, event.getPostid()));
-                        try {
-                            if (Util.isAllowedToSeeEntity(requesterId, moveevent.getEventid())) {
-                                eventResults.add(moveEventResult);
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                        if (Util.isAllowedToSeeEntity(requesterId, moveevent.getEventid())) {
+                            eventResults.add(moveEventResult);
                         }
                     }
                 }
@@ -575,12 +549,8 @@ public class ProfileController extends Controller {
             // "Normal" event
             if (!subEvent) {
                 EventResult eventResult = new EventResult(event.getPostid(), event.getName(), event.getDescription(), dateStrings, getEventMedia(session, event.getPostid()));
-                try {
-                    if (Util.isAllowedToSeeEntity(requesterId, event.getPostid())) {
-                        eventResults.add(eventResult);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                if (Util.isAllowedToSeeEntity(requesterId, event.getPostid())) {
+                    eventResults.add(eventResult);
                 }
             }
         }
@@ -640,9 +610,6 @@ public class ProfileController extends Controller {
 
     @Transactional
     public Result updateProfile(Integer id) {
-        System.out.println("======================================================================");
-        System.out.println(request().body().asJson());
-        System.out.println("======================================================================");
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Query query = session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id);
         Profile profile;
@@ -707,7 +674,6 @@ public class ProfileController extends Controller {
 
                 profile.setDied(death.getEventid());
                 Date[] birthDay = Util.getDates(profile.getPeopleentityid());
-                System.out.println("720: " + Json.toJson(birthDay));
 
             } else {
                 // Update date if necessary

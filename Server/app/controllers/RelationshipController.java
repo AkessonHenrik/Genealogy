@@ -170,7 +170,7 @@ public class RelationshipController extends Controller {
         }
         session.getTransaction().commit();
         session.close();
-        return ok(Json.toJson(relationship).toString());
+        return ok(Json.toJson(relationship));
     }
 
     @Transactional
