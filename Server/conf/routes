@@ -9,7 +9,7 @@ POST          /auth                                @controllers.AccountControlle
 
 POST          /profile                             @controllers.ProfileController.createProfile
 
-GET           /family/:id                          @controllers.RelationshipController.getFamily(id: Integer)
+GET           /family/:id                          @controllers.FamilyController.getFamily(id: Integer)
 
 POST          /relationship                        @controllers.RelationshipController.createRelationship
 
@@ -17,7 +17,7 @@ POST          /parents                             @controllers.ParentController
 
 POST          /ghost                               @controllers.ProfileController.addGhost
 
-POST          /upload                              @controllers.ProfileController.upload
+POST          /upload                              @controllers.UploadController.upload
 
 GET           /owned/:id                           @controllers.ProfileController.getOwnedProfiles(id: Integer)
 POST          /owned                               @controllers.ProfileController.isOwned
