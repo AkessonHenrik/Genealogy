@@ -9,13 +9,17 @@ import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Http;
 import play.mvc.Result;
+import play.mvc.Results;
 import returnTypes.ClaimResult;
 import utils.SessionHandler;
+import utils.Util;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static utils.Util.isValid;
 
 /**
  * Created by Henrik on 18/06/2017.
@@ -25,6 +29,10 @@ public class AccountController extends Controller {
     @Transactional
     public Result addAccount() {
         JsonNode json = request().body().asJson();
+
+        if (!isValid(json, new String[]{"email", "password", "claim", "profileId"})) {
+            return badRequest("Incomplete request body");
+        }
         System.out.println(json.toString());
         SessionHandler sessionHandler = SessionHandler.getInstance();
         Session session = sessionHandler.getSessionFactory().openSession();
@@ -40,8 +48,13 @@ public class AccountController extends Controller {
         Account account = new Account();
         account.setEmail(email);
         account.setPassword(password);
-        if (!claiming)
+        if (!claiming) {
+            if (session.createQuery("from Account where profileid = :profileid").setParameter("profileid", profileId).list().size() > 0) {
+                session.close();
+                return Results.status(409, "There already is an account with this email");
+            }
             account.setProfileid(profileId);
+        }
 
         session.save(account);
         session.getTransaction().commit();
@@ -51,7 +64,12 @@ public class AccountController extends Controller {
             claim.setClaimerid(account.getId());
             claim.setClaimedprofileid(profileId);
             Ghost ghost = session.get(Ghost.class, profileId);
-            claim.setOwnerid(ghost.getOwner());
+            if (ghost != null) {
+                claim.setOwnerid(ghost.getOwner());
+            } else {
+                Account ownerAccount = (Account) session.createQuery("from Account where profileid = :id").setParameter("id", profileId).list().get(0);
+                claim.setOwnerid(ownerAccount.getId());
+            }
             if (json.has("message"))
                 claim.setMessage(json.get("message").asText());
             session.save(claim);
@@ -66,24 +84,30 @@ public class AccountController extends Controller {
     @Transactional
     public Result login() {
         JsonNode json = request().body().asJson();
-        System.out.println(json.toString());
+
+        if (!isValid(json, new String[]{"email", "password"})) {
+            return badRequest("Invalid data");
+        }
+
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        String email = json.get("email").asText();
+
         String queryString = "from Account where email = :emailParam";
         Query query = session.createQuery(queryString);
-        query.setParameter("emailParam", json.get("email").asText());
-        try {
-            Account result = (Account) query.list().get(0);
+        query.setParameter("emailParam", email);
+        Account account = (Account) query.list().get(0);
+        session.close();
 
-            session.close();
-            if (result.getPassword().equals(json.get("password").asText())) {
-                result.setPassword("");
-                JsonNode resultJson = Json.toJson(result);
+        if (account != null) {
+            if (account.getPassword().equals(json.get("password").asText())) {
+                account.setPassword("");
+                JsonNode resultJson = Json.toJson(account);
                 return ok(resultJson);
             } else {
                 return badRequest("Wrong password");
             }
-        } catch (Exception e) {
-            return notFound();
+        } else {
+            return notFound("No account with email: " + email + " exists");
         }
     }
 
@@ -235,10 +259,8 @@ public class AccountController extends Controller {
         return ok();
     }
 
-
     @Transactional
     public Result updateAccount(Integer id) {
-        System.out.println("HAKLAS");
         JsonNode jsonNode = request().body().asJson();
         System.out.println(jsonNode);
         if (!request().hasHeader("requester")) {
@@ -257,7 +279,7 @@ public class AccountController extends Controller {
                 Pattern re = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
                 String newEmail = jsonNode.get("email").asText().toString();
                 Matcher matcher = re.matcher(newEmail);
-                if(!matcher.find()) {
+                if (!matcher.find()) {
                     session.close();
                     return badRequest("Invalid email format");
                 }

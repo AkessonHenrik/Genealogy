@@ -24,15 +24,40 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static utils.Util.getEventMedia;
+import static utils.Util.isValid;
 
 public class ProfileController extends Controller {
 
     @Transactional
     public Result createProfile() {
 
+        JsonNode jsonNode = request().body().asJson();
+
+        if (!isValid(jsonNode, new String[]{"firstname", "lastname", "gender", "birthDay", "born"})) {
+            return badRequest("Incomplete profile");
+        }
+        if (!isValid(jsonNode.get("born"), new String[]{"name", "description", "location"})) {
+            return badRequest("Incomplete born attribute");
+        }
+        if (!isValid(jsonNode.get("born").get("location"), new String[]{"city", "province", "country"})) {
+            return badRequest("Incomplete born location");
+        }
+        if (jsonNode.has("died")) {
+            if (!jsonNode.has("deathDay")) {
+                return badRequest("Profile set as dead but no death day specified");
+            } else {
+                if (!isValid(jsonNode.get("died"), new String[]{"name", "description", "location"})) {
+                    return badRequest("Incomplete died attribute");
+                } else if (!isValid(jsonNode.get("died").get("location"), new String[]{"city", "province", "country"})) {
+                    return badRequest("Incomplete died.location attribute");
+                }
+            }
+        }
+        System.out.println("=*=*=*=*=*=*=*=*=*=*=*=**=");
+        System.out.println(jsonNode);
+        System.out.println("=*=*=*=*=*=*=*=*=*=*=*=**=");
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
-        JsonNode jsonNode = request().body().asJson();
 
         // Extract values from request body
         Integer gender = jsonNode.get("gender").asInt();
@@ -44,6 +69,7 @@ public class ProfileController extends Controller {
         }
 
         session.getTransaction().begin();
+
 
         // Profile entity
         Profile profile = new Profile();
@@ -221,17 +247,11 @@ public class ProfileController extends Controller {
                 return badRequest();
             }
         }
-        System.out.println(profile.getPeopleentityid());
-        System.out.println(profile.getFirstname());
-        System.out.println(profile.getLastname());
-        System.out.println(profilePicturePath);
-        System.out.println(profile.getGender());
-        SearchResult searchResult = new SearchResult(profile.getPeopleentityid(), profile.getFirstname(), profile.getLastname(), profilePicturePath, profile.getGender());
+        ProfileResult ProfileResult = new ProfileResult(profile.getPeopleentityid(), profile.getFirstname(), profile.getLastname(), profilePicturePath, profile.getGender());
 
 
         session.close();
-        System.out.println(Json.toJson(searchResult));
-        return ok(Json.toJson(searchResult));
+        return ok(Json.toJson(ProfileResult));
     }
 
     @Transactional
@@ -264,18 +284,18 @@ public class ProfileController extends Controller {
 
 
         List<Integer> ghosts = session.createQuery(query).list();
-        List<SearchResult> results = new ArrayList<>();
+        List<ProfileResult> results = new ArrayList<>();
         for (Integer ghostId : ghosts) {
             query = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + ghostId;
             List<Object[]> result = session.createQuery(query).list();
-            SearchResult caller;
+            ProfileResult caller;
             for (Object[] resultObj : result) {
                 int resid = (int) resultObj[0];
                 String resfirstname = (String) resultObj[1];
                 String reslastname = (String) resultObj[2];
                 String resPath = (String) resultObj[3];
                 int resGender = (int) resultObj[4];
-                caller = new SearchResult(resid, resfirstname, reslastname, resPath, resGender);
+                caller = new ProfileResult(resid, resfirstname, reslastname, resPath, resGender);
                 results.add(caller);
             }
         }
@@ -313,13 +333,14 @@ public class ProfileController extends Controller {
     public Result getProfile(Integer id) {
 
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        // Get profile SearchResult and model
+        // Get profile ProfileResult and model
         Timedentity t = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", id).list().get(0);
 
-        if (!request().hasHeader("requester") || t.getVisibility() != 0) {
+        if (!request().hasHeader("requester") && t.getVisibility() != 0) {
             session.close();
             return badRequest("No requester header specified");
         }
+
         int requesterId = Integer.parseInt(request().getHeader("requester"));
         try {
             if (!Util.isAllowedToSeeEntity(requesterId, t.getId())) {
@@ -332,8 +353,8 @@ public class ProfileController extends Controller {
         Profile p = session.get(Profile.class, id);
         String queryString = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id;
         Query query = session.createQuery(queryString);
-        SearchResult profile;
-        profile = (SearchResult) SearchResult.createSearchResultPersonFromQueryResult(query.list()).get(0);
+        ProfileResult profile;
+        profile = (ProfileResult) ProfileResult.createSearchResultPersonFromQueryResult(query.list()).get(0);
 
         // Get born and died events
         List<EventResult> eventResults = new ArrayList<>();
@@ -633,7 +654,7 @@ public class ProfileController extends Controller {
                         session.close();
                         return ok(Json.toJson(true));
                     } else {
-                        if(Util.getOwnerOfProfile(owner.getPeopleorrelationshipid()) == ownerId) {
+                        if (Util.getOwnerOfProfile(owner.getPeopleorrelationshipid()) == ownerId) {
                             session.close();
                             return ok(Json.toJson(true));
                         }
@@ -650,6 +671,9 @@ public class ProfileController extends Controller {
 
     @Transactional
     public Result updateProfile(Integer id) {
+        System.out.println("======================================================================");
+        System.out.println(request().body().asJson());
+        System.out.println("======================================================================");
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Query query = session.createQuery("from Profile where peopleentityid = :id").setParameter("id", id);
         Profile profile;
@@ -678,6 +702,8 @@ public class ProfileController extends Controller {
             int newTimeId = Util.getOrCreateTime(new Date[]{Util.parseDateFromString(jsonNode.get("birthDay").asText())});
             birthDay.setTimeid(newTimeId);
             session.save(birthDay);
+            Timedentity timedentity = session.get(Timedentity.class, profile.getPeopleentityid());
+            timedentity.setTimeid(newTimeId);
         }
         if (jsonNode.has("born")) {
             Event bornEvent = (Event) session.createQuery("from Event where postid = :id").setParameter("id", profile.getBorn()).list().get(0);
@@ -711,6 +737,8 @@ public class ProfileController extends Controller {
                 session.save(death);
 
                 profile.setDied(death.getEventid());
+                Date[] birthDay = Util.getDates(profile.getPeopleentityid());
+                System.out.println("720: " + Json.toJson(birthDay));
 
             } else {
                 // Update date if necessary

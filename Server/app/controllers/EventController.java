@@ -258,7 +258,7 @@ public class EventController {
         Timedentity timedentity = session.get(Timedentity.class, id);
 
 
-        Date[] dates = Util.getDates(timedentity.getTimeid());
+        Date[] dates = Util.getDates(timedentity.getId());
         String[] dateStrings = new String[dates.length];
         for (int i = 0; i < dateStrings.length; i++) {
             dateStrings[i] = dates[i].toString();
@@ -282,9 +282,9 @@ public class EventController {
         // Get location
         Location location = session.get(Location.class, locatedEvent.getLocationid());
         LocationResult locationResult = Util.getLocationFromId(location.getId(), session);
-        Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", event.getPostid()).list().get(0);
+        Timedentity timedentity = session.get(Timedentity.class, id);
 
-        Date[] dates = Util.getDates(timedentity.getTimeid());
+        Date[] dates = Util.getDates(timedentity.getId());
         String[] dateStrings = new String[dates.length];
         for (int i = 0; i < dateStrings.length; i++) {
             dateStrings[i] = dates[i].toString();
@@ -305,7 +305,7 @@ public class EventController {
         LocationResult locationResult = Util.getLocationFromId(location.getId(), session);
         Timedentity timedentity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", event.getPostid()).list().get(0);
 
-        Date[] dates = Util.getDates(timedentity.getTimeid());
+        Date[] dates = Util.getDates(timedentity.getId());
         String[] dateStrings = new String[dates.length];
         for (int i = 0; i < dateStrings.length; i++) {
             dateStrings[i] = dates[i].toString();
@@ -370,6 +370,7 @@ public class EventController {
             eventTypes.add("LocatedEvent");
             eventTypes.add("MoveEvent");
             eventTypes.add("WorkEvent");
+            eventTypes.add("Event");
             if (eventTypes.indexOf(type) == -1) {
                 session.getTransaction().rollback();
                 session.close();
@@ -549,3 +550,5 @@ public class EventController {
         return ok();
     }
 }
+
+

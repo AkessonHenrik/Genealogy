@@ -5,11 +5,10 @@ import org.hibernate.Session;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
-import returnTypes.SearchResult;
+import returnTypes.ProfileResult;
 import utils.SessionHandler;
 import utils.Util;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,32 +36,11 @@ public class SearchController extends Controller {
 
         Query query = session.createQuery("select peopleentityid from Profile where lower(firstname) like lower('%" + firstname + "%') and lower(lastname) like lower('%" + lastname + "%')");
         List<Integer> ids = query.list();
-        List<SearchResult> results = new ArrayList<>();
+        List<ProfileResult> results = new ArrayList<>();
 
         for (Integer id : ids) {
-            List<Object[]> profiles = session.createQuery("select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = :id").setParameter("id", id).list();
-            for (Object[] resultObj : profiles) {
-                int resid = (int) resultObj[0];
-                String resfirstname = (String) resultObj[1];
-                String reslastname = (String) resultObj[2];
-                String resPath = (String) resultObj[3];
-                int resGender = (int) resultObj[4];
-                SearchResult caller = new SearchResult(resid, resfirstname, reslastname, resPath, resGender);
-                boolean alreadyIn = false;
-                for (SearchResult searchResult : results) {
-                    if (searchResult.id == resid) {
-                        alreadyIn = true;
-                    }
-                }
-                if (!alreadyIn) {
-                    try {
-                        if (Util.isAllowedToSeeEntity(requesterId, caller.id))
-                            results.add(caller);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
+            if (Util.isAllowedToSeeEntity(requesterId, id))
+                results.add(Util.getSimplifiedProfile(id, session));
         }
         session.close();
         return ok(Json.toJson(results));

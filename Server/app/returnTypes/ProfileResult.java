@@ -1,6 +1,5 @@
 package returnTypes;
 
-import models.Time;
 import org.hibernate.Session;
 import utils.SessionHandler;
 
@@ -10,7 +9,7 @@ import java.util.List;
 
 import static utils.Util.getDates;
 
-public class SearchResult {
+public class ProfileResult {
     public int id;
     public String firstname;
     public String lastname;
@@ -18,7 +17,7 @@ public class SearchResult {
     public int gender;
     public Date born, died;
 
-    public SearchResult(int id, String firstname, String lastname, String profilePicture, int gender) {
+    public ProfileResult(int id, String firstname, String lastname, String profilePicture, int gender) {
         this.id = id;
         this.firstname = firstname;
         this.lastname = lastname;
@@ -32,7 +31,7 @@ public class SearchResult {
 
     @Override
     public String toString() {
-        return "SearchResult{" +
+        return "ProfileResult{" +
                 "id=" + id +
                 ", firstname='" + firstname + '\'' +
                 ", lastname='" + lastname + '\'' +
@@ -41,9 +40,9 @@ public class SearchResult {
                 '}';
     }
 
-    public static List<SearchResult> createSearchResultPersonFromQueryResult(List<Object[]> kids) {
+    public static List<ProfileResult> createSearchResultPersonFromQueryResult(List<Object[]> kids) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
-        List<SearchResult> results = new ArrayList<>();
+        List<ProfileResult> results = new ArrayList<>();
         for (Object[] resultObj : kids) {
             int resid = (int) resultObj[0];
             String resfirstname = (String) resultObj[1];
@@ -51,13 +50,13 @@ public class SearchResult {
             String resPath = (String) resultObj[3];
             int resGender = (int) resultObj[4];
             boolean alreadyIn = false;
-            for (SearchResult par : results) {
+            for (ProfileResult par : results) {
                 if (par.id == resid) {
                     alreadyIn = true;
                 }
             }
             if (!alreadyIn) {
-                results.add(new SearchResult(resid, resfirstname, reslastname, resPath, resGender));
+                results.add(new ProfileResult(resid, resfirstname, reslastname, resPath, resGender));
             }
         }
         session.close();

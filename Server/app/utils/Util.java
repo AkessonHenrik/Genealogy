@@ -6,6 +6,7 @@ import org.hibernate.*;
 import org.hibernate.transform.Transformers;
 import play.libs.Json;
 import returnTypes.LocationResult;
+import returnTypes.ProfileResult;
 
 import javax.persistence.LockModeType;
 import javax.validation.ConstraintViolationException;
@@ -14,6 +15,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Util {
     /**
@@ -338,19 +340,16 @@ public class Util {
 
     public static boolean setVisibilityToEntity2(int entityId, JsonNode visibility, Session session) {
         System.out.println(visibility);
-//        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Timedentity entity = (Timedentity) session.createQuery("from Timedentity where id = :id").setParameter("id", entityId).list().get(0);
         if (visibility.has("visibility")) {
             if (visibility.get("visibility").asText().equals("private")) {
                 entity.setVisibility(1);
                 session.getTransaction().begin();
                 session.saveOrUpdate(entity);
-//                session.getTransaction().commit();
             } else if (visibility.get("visibility").asText().equals("public")) {
                 entity.setVisibility(0);
                 session.getTransaction().begin();
                 session.saveOrUpdate(entity);
-//                session.getTransaction().commit();
             } else if (visibility.get("visibility").asText().equals("limited")) {
 
                 entity.setVisibility(2);
@@ -457,23 +456,23 @@ public class Util {
     }
 
 
-    public static boolean isAllowedToSeeEntity(Integer requesterId, int timedEntityId) throws Exception {
-        System.out.println("REQUESTOR: " + requesterId);
+    public static boolean isAllowedToSeeEntity(Integer requesterId, int timedEntityId) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
         Query query = session.createQuery("from Timedentity where id = :id").setParameter("id", timedEntityId);
         Timedentity timedentity;
         if (query.list().size() == 0) {
-            throw new Exception("Invalid parameters");
+            session.close();
+            return false;
         }
         timedentity = (Timedentity) query.list().get(0);
 
+        // Public
         if (timedentity.getVisibility() == 0) {
-            // Public
             session.close();
             return true;
         } else if (timedentity.getVisibility() == 1) {
-            if (requesterId == null) {
+            if (requesterId == null || requesterId.equals(-1)) {
                 session.close();
                 return false;
             }
@@ -485,94 +484,49 @@ public class Util {
                 return true;
             }
             // Is requester the entity?
-            if (timedentity.getId() == requesterId) {
+            if (requesterId.equals(timedentity.getId())) {
                 session.close();
                 return true;
             }
 
 
             // Is requester the account associated to the owner of the entity?
-            int ownerOfEntity = ((Timedentityowner) session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list().get(0)).getPeopleorrelationshipid();
-            System.out.println("REQUESTOR: " + requesterId);
-            if (session.createQuery("from Account where profileid = :pid and id = :id").setParameter("pid", ownerOfEntity).setParameter("id", requesterId).list().size() > 0) {
-                System.out.println("HEYO");
-                session.close();
-                return true;
-            }
-
-            System.out.println("Owner: " + ownerOfEntity);
-            query = session.createQuery("from Ghost where profileid = :id").setParameter("id", ownerOfEntity);
-            if (query.list().size() > 0) {
-                Ghost ghost = (Ghost) query.list().get(0);
-                if (ghost.getOwner() == requesterId) {
+            List<Timedentityowner> ownersOfEntity = session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list();
+            for (Timedentityowner ownerOfEntity : ownersOfEntity) {
+                if (requesterId.equals(ownerOfEntity.getPeopleorrelationshipid())) {
+                    session.close();
+                    return true;
+                } else if (requesterId.equals(getOwnerOfProfile(ownerOfEntity.getPeopleorrelationshipid()))) {
                     session.close();
                     return true;
                 }
-            } else { // is owner a relationship?
-                if (session.createQuery("from Relationship where id = :id").setParameter("id", ownerOfEntity).list().size() > 0) {
-                    // Owner is a relationship
-                    // Is at least one of the people of the relationship owned by requester?
-                    // 1: profile1 or profile2 is requester
-                    if (session.createQuery("from Relationship where peopleentityid = :id and profile1 = :p1 or profile2 = :p2").setParameter("id", ownerOfEntity).setParameter("p1", requesterId).setParameter("p2", requesterId).list().size() > 0) {
-                        session.close();
-                        return true;
-                    }
-                    Relationship rel = (Relationship) session.createQuery("from Relationship where peopleentityid = :id").setParameter("id", ownerOfEntity).list().get(0);
-                    if (session.createQuery("from Account a inner join Ghost g on g.owner = a.profileid where a.id = :req and (g.profileid = :p1 or g.profileid = :p2)").setParameter("req", requesterId).setParameter("p1", rel.getProfile1()).setParameter("p2", rel.getProfile2()).list().size() > 0) {
-                        session.close();
-                        return true;
-                    }
-                }
-
             }
-
-            // Is requester tagged ?
-
-
         } else {
             // Limited
-            if (requesterId == null) {
+            if (requesterId.intValue() == -1 || requesterId == null) {
+                session.close();
+                System.out.println(1);
                 return false;
             }
 
             // A limited visibility is by definition forbidden to non registered users
 
             // Is requester owner of the entity?
-            query = session.createQuery("from Timedentityowner where timedentityid = :id and peopleorrelationshipid = :requesterId").setParameter("id", timedEntityId).setParameter("requesterId", requesterId);
+            List<Timedentityowner> owners = session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list();
             if (query.list().size() > 0) {
-                session.close();
-                return true;
-            }
-            // Is requester the entity?
-            if (timedentity.getId() == requesterId) {
-                session.close();
-                return true;
-            }
-
-            // Is requester the account associated to the owner of the entity?
-            int ownerOfEntity = ((Timedentityowner) session.createQuery("from Timedentityowner where timedentityid = :id").setParameter("id", timedEntityId).list().get(0)).getPeopleorrelationshipid();
-            System.out.println("OWNER: " + ownerOfEntity);
-            // Is requester the account associated to the owner of the entity?
-            System.out.println("REQUESTOR: " + requesterId);
-            if (session.createQuery("from Account where profileid = :pid and id = :id").setParameter("pid", ownerOfEntity).setParameter("id", requesterId).list().size() > 0) {
-                System.out.println("HEYO");
-                session.close();
-                return true;
-            }
-            query = session.createQuery("from Ghost where profileid = :id").setParameter("id", ownerOfEntity);
-            if (query.list().size() > 0) {
-                Ghost ghost = (Ghost) query.list().get(0);
-                if (ghost.getOwner() == requesterId) {
-                    session.close();
-                    return true;
+                for (Timedentityowner timedentityowner : owners) {
+                    if (requesterId.equals(timedentityowner.getPeopleorrelationshipid()) || requesterId.equals(getOwnerOfProfile(timedentityowner.getPeopleorrelationshipid()))) {
+                        session.close();
+                        return true;
+                    }
                 }
             }
 
-            // Is requester tagged ?
-
-
+            // At this point, requester is neither owner of the entity nor owner of one of the owners of the entity
             // Check access
             boolean isAllowed = false;
+
+            // First, see if requester is among the visible by
             query = session.createQuery("from Visibleby where timedentityid = :id").setParameter("id", timedEntityId);
             List<Visibleby> visibleby = query.list();
             if (visibleby.size() > 0) { // Only some can see the entity
@@ -587,15 +541,8 @@ public class Util {
                         Group group = (Group) session.createQuery("from Group where id = :groupid").setParameter("groupid", groupaccess.getGroupid()).list().get(0);
                         List<Grouppeople> grouppeople = session.createQuery("from Grouppeople where groupid = :groupid").setParameter("groupid", group.getId()).list();
                         for (Grouppeople groupperson : grouppeople) {
-                            if (groupperson.getProfileid() == requesterId) {
+                            if (requesterId.equals(groupperson.getProfileid()) || requesterId.equals(getOwnerOfProfile(groupperson.getProfileid()))) {
                                 isAllowed = true;
-                            } else {
-                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", groupperson.getProfileid());
-                                if (query.list().size() > 0) { // Group person is a ghost
-                                    if (((Ghost) query.list().get(0)).getOwner() == requesterId) {
-                                        isAllowed = true;
-                                    }
-                                }
                             }
                         }
                     }
@@ -606,15 +553,8 @@ public class Util {
                         // Person
                         List<Profileaccess> profileaccesses = session.createQuery("from Profileaccess where accessid = :accessid").setParameter("accessid", v.getAccessid()).list();
                         for (Profileaccess profileaccess : profileaccesses) {
-                            if (profileaccess.getProfileid() == requesterId) {
+                            if (requesterId.equals(profileaccess.getProfileid()) || requesterId.equals(getOwnerOfProfile(profileaccess.getProfileid()))) {
                                 isAllowed = true;
-                            } else {
-                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", profileaccess.getProfileid());
-                                if (query.list().size() > 0) { // Group person is a ghost
-                                    if (((Ghost) query.list().get(0)).getOwner() == requesterId) {
-                                        isAllowed = true;
-                                    }
-                                }
                             }
                         }
                     }
@@ -624,61 +564,34 @@ public class Util {
                 isAllowed = true;
             }
 
+            // Check if requester is among the not visible by
             query = session.createQuery("from Notvisibleby where timedentityid = :id").setParameter("id", timedEntityId);
             List<Notvisibleby> notvisiblebylist = query.list();
             if (notvisiblebylist.size() > 0) { // Some cannot see the entity
                 for (Notvisibleby notvisibleby : notvisiblebylist) {
                     // group or person?
-                    /**
-                     * Check if requester is a member of groups if there are some
-                     */
-                    // Group
+                    // Check if requester is a member of groups if there are some
                     List<Groupaccess> groupaccesses = session.createQuery("from Groupaccess where accessid = :accessid").setParameter("accessid", notvisibleby.getAccessid()).list();
                     for (Groupaccess groupaccess : groupaccesses) {
                         Group group = (Group) session.createQuery("from Group where id = :groupid").setParameter("groupid", groupaccess.getGroupid()).list().get(0);
                         List<Grouppeople> grouppeople = session.createQuery("from Grouppeople where groupid = :groupid").setParameter("groupid", group.getId()).list();
                         for (Grouppeople groupperson : grouppeople) {
-                            if (groupperson.getProfileid() == requesterId) {
+                            if (requesterId.equals(groupperson.getProfileid()) || requesterId.equals(getOwnerOfProfile(groupperson.getProfileid()))) {
                                 isAllowed = false;
                             }
-//                            else {
-//                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", groupperson.getProfileid());
-//                                if (query.list().size() > 0) { // Group person is a ghost
-//                                    if (((Ghost) query.list().get(0)).getOwner() == requesterId) {
-//                                        isAllowed = false;
-//                                    }
-//                                }
-//                            }
                         }
                     }
-                    /**
-                     * Check if requester is an individual profileaccess
-                     */
-                    // Person
+                    // Check if requester is an individual profileaccess
                     List<Profileaccess> profileaccesses = session.createQuery("from Profileaccess where accessid = :accessid").setParameter("accessid", notvisibleby.getAccessid()).list();
                     for (Profileaccess profileaccess : profileaccesses) {
-                        System.out.println("Requester: " + requesterId);
-                        System.out.println(profileaccess.getProfileid());
-                        if (profileaccess.getProfileid() == requesterId) {
+                        if (requesterId.equals(profileaccess.getProfileid()) || requesterId.equals(getOwnerOfProfile(profileaccess.getProfileid()))) {
                             isAllowed = false;
                         }
-//                            else {
-//                                query = session.createQuery("from Ghost where profileid = :id").setParameter("id", profileaccess.getProfileid());
-//                                if (query.list().size() > 0) { // Group person is a ghost
-//                                    if (((Ghost) query.list().get(0)).getOwner() == requesterId) {
-//                                        isAllowed = false;
-//                                    }
-//                                }
-//                            }
                     }
                 }
             }
-
-
-            if (isAllowed) {
-                session.close();
-                return true;
-            }
+            session.close();
+            return isAllowed;
         }
 
         session.close();
@@ -727,23 +640,55 @@ public class Util {
         return new LocationResult(city.getName(), province.getName(), country.getName());
     }
 
-
     public static int getOwnerOfProfile(int profileid) {
         Session session = SessionHandler.getInstance().getSessionFactory().openSession();
         Ghost ghost = session.get(Ghost.class, profileid);
         if (ghost == null) {
             // This profile is associated to an account
             Query query = session.createQuery("from Account where profileid = :id").setParameter("id", profileid);
-            if (query.list().size() == 0) {
+            if (query.list().size() > 0) {
+                Account account = (Account) query.list().get(0);
+                session.close();
+                return account.getId();
+            } else {
+                session.close();
+                return -1;
             }
-
-            Account account = (Account) query.list().get(0);
-            session.close();
-            return account.getId();
         } else {
             session.close();
             return ghost.getOwner();
         }
+    }
+
+    public static boolean isValid(JsonNode jsonNode, String[] mandatoryFields) {
+        for (String mandatoryField : mandatoryFields) {
+            if (!jsonNode.has(mandatoryField)) {
+                System.out.println("Missing " + mandatoryField);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static ProfileResult getSimplifiedProfile(Integer id, Session session) {
+        System.out.println("ID = " + id);
+        // Select person whose id is given as parameter
+        String query = "select p.peopleentityid as id, p.firstname as firstname, p.lastname as lastname, m.path as profilePicture, p.gender as gender from Profile as p inner join Media as m on m.postid = p.profilepicture where p.peopleentityid = " + id;
+        List<Object[]> result = session.createQuery(query).list();
+        ProfileResult caller = null;
+        if (result.size() == 0) {
+            return null;
+        }
+        for (Object[] resultObj : result) {
+            int resid = (int) resultObj[0];
+            String resfirstname = (String) resultObj[1];
+            String reslastname = (String) resultObj[2];
+            String resPath = (String) resultObj[3];
+            int resGender = (int) resultObj[4];
+            caller = new ProfileResult(resid, resfirstname, reslastname, resPath, resGender);
+            System.out.println("Adding: " + Json.toJson(caller));
+        }
+        return caller;
     }
 }
 

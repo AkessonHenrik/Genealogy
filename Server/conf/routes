@@ -66,3 +66,6 @@ GET           /notification/:accountId             @controllers.AccountControlle
 DELETE        /group/:groupid                      @controllers.GroupController.deleteGroup(groupid: Integer)
 
 PATCH         /signup/:id                          @controllers.AccountController.updateAccount(id: Integer)
+
+
+DELETE        /parents/:id                         @controllers.ParentController.deleteParent(id: Integer)

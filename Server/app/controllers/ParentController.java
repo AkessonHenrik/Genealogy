@@ -3,6 +3,7 @@ package controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import models.*;
 import org.hibernate.Session;
+import play.db.jpa.Transactional;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
@@ -15,11 +16,12 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
+import static utils.Util.getOwnerOfProfile;
 import static utils.Util.parseDateFromString;
 
 public class ParentController extends Controller {
-    Session session;
 
+    @Transactional
     public Result addParent() {
 
         if (!request().hasHeader("requester")) {
@@ -36,7 +38,7 @@ public class ParentController extends Controller {
         Date begin = null;
         Date end = null;
 
-        session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
 
         if (session.createQuery("from Account where id = :id").setParameter("id", requesterId).list().size() == 0) {
@@ -67,30 +69,10 @@ public class ParentController extends Controller {
 
 
         int timeId;
-        if (end == null) {
-            timeId = findSingleTime(begin);
+        if (end != null) {
+            timeId = Util.getOrCreateTime(new Date[]{begin, end});
         } else {
-            timeId = findTimeInterval(begin, end);
-        }
-
-        // Create time if doesn't exist
-        if (timeId == -1) {
-            Time time = new Time();
-            session.save(time);
-            timeId = time.getId();
-            // Create singletime
-            if (end == null) {
-                Singletime st = new Singletime();
-                st.setTimeid(time.getId());
-                st.setTime(begin);
-                session.save(st);
-            } else { // create timeinterval
-                Timeinterval ti = new Timeinterval();
-                ti.setTimeid(time.getId());
-                ti.setBegintime(begin);
-                ti.setEndtime(end);
-                session.save(ti);
-            }
+            timeId = Util.getOrCreateTime(new Date[]{begin});
         }
 
         // Create timedentitiy
@@ -184,14 +166,6 @@ public class ParentController extends Controller {
         owner.setTimedentityid(parent.getTimedentityid());
         session.save(owner);
 
-        // Requester is owner
-        if (session.get(Timedentityowner.class, requesterId) == null) {
-            owner = new Timedentityowner();
-            owner.setPeopleorrelationshipid(requesterId);
-            owner.setTimedentityid(parent.getTimedentityid());
-            session.save(owner);
-        }
-
 
         if (jsonNode.has("visibility")) {
             if (!Util.setVisibilityToEntity2(parent.getTimedentityid(), jsonNode.get("visibility"), session)) {
@@ -206,25 +180,7 @@ public class ParentController extends Controller {
         return ok(Json.toJson(parent));
     }
 
-    public int findSingleTime(Date date) {
-
-        List<Singletime> times = session.createQuery("from Singletime where time = '" + date.toString() + "'").list();
-        if (times.size() == 0) {
-            return -1;
-        }
-        return times.get(0).getTimeid();
-    }
-
-    public int findTimeInterval(Date begin, Date end) {
-
-        List<Timeinterval> times = session.createQuery("from Timeinterval where begintime = '" + begin.toString() + "' and endtime = '" + end.toString() + "'").list();
-        if (times.size() == 0) {
-            return -1;
-        }
-        return times.get(0).getTimeid();
-    }
-
-
+    @Transactional
     public Result updateParent(Integer id) {
         if (!request().hasHeader("requester")) {
             return forbidden();
@@ -250,7 +206,7 @@ public class ParentController extends Controller {
         if (Util.getOwnerOfProfile(parentsof.getChildid()) == requesterId) {
             canAccess = true;
         }
-        if (owner == null && !canAccess) {
+        if (!canAccess && owner == null) {
 
             // Get parent people
             Relationship parentRelationship = session.get(Relationship.class, parentsof.getParentsid());
@@ -275,11 +231,10 @@ public class ParentController extends Controller {
                 }
             }
 
-        } else if (owner.getPeopleorrelationshipid() == requesterId || Util.getOwnerOfProfile(owner.getPeopleorrelationshipid()) == requesterId) {
+        } else if (!canAccess && (owner.getPeopleorrelationshipid() == requesterId || Util.getOwnerOfProfile(owner.getPeopleorrelationshipid()) == requesterId)) {
             canAccess = true;
         }
         if (!canAccess) {
-            System.out.println("lolilol");
             session.close();
             return forbidden();
         }
@@ -334,7 +289,7 @@ public class ParentController extends Controller {
         return ok();
     }
 
-    public static int getParentTypeAsIntFromString(String parentTypeString) {
+    public int getParentTypeAsIntFromString(String parentTypeString) {
         if (parentTypeString.equals("biological")) {
             return 0;
         } else if (parentTypeString.equals("adoptive")) {
@@ -346,7 +301,7 @@ public class ParentController extends Controller {
         }
     }
 
-    private static void setParentEvent(Parentsof parent, Session session) {
+    private void setParentEvent(Parentsof parent, Session session) {
         Post post = session.get(Post.class, parent.getTimedentityid());
         if (post == null) {
             post = new Post();
@@ -384,5 +339,38 @@ public class ParentController extends Controller {
             event.setDescription(child.getFirstname() + " is guarded by " + parentdescription);
         }
         session.save(event);
+    }
+
+    @Transactional
+    public Result deleteParent(Integer id) {
+        if (!request().hasHeader("requester")) {
+            return forbidden();
+        }
+        Integer requesterId = Integer.parseInt(request().getHeader("requester"));
+
+        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+
+        Parentsof parent = session.get(Parentsof.class, id);
+        if (parent == null) {
+            session.close();
+            return notFound();
+        }
+        boolean isAllowed;
+        Relationship parentRelationship = session.get(Relationship.class, parent.getParentsid());
+        if (parentRelationship != null)
+            isAllowed = requesterId == getOwnerOfProfile(parentRelationship.getProfile1()) || requesterId == getOwnerOfProfile(parentRelationship.getProfile2());
+        else
+            isAllowed = requesterId == getOwnerOfProfile(parent.getParentsid()) || requesterId == getOwnerOfProfile(parent.getChildid());
+
+        if (!isAllowed) {
+            session.close();
+            return forbidden();
+        }
+        session.getTransaction().begin();
+        Timedentity parentTimedEntity = session.get(Timedentity.class, parent.getTimedentityid());
+        session.delete(parentTimedEntity);
+        session.getTransaction().commit();
+        session.close();
+        return ok();
     }
 }
