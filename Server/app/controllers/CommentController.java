@@ -1,6 +1,7 @@
 package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import models.Account;
 import models.Comment;
 import models.Profile;
 import org.hibernate.Query;
@@ -10,6 +11,7 @@ import play.mvc.Controller;
 import play.mvc.Result;
 import returnTypes.CommentResult;
 import utils.SessionHandler;
+import utils.Util;
 
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -22,20 +24,35 @@ import java.util.List;
  */
 public class CommentController extends Controller {
     public Result getComments(Integer postid) {
-        Session session = SessionHandler.getInstance().getSessionFactory().openSession();
+        Integer requesterId = -1;
+        if (request().hasHeader("requester"))
+            requesterId = Integer.parseInt(request().getHeader("requester"));
+        if (Util.isAllowedToSeeEntity(requesterId, postid)) {
+            Session session = SessionHandler.getInstance().getSessionFactory().openSession();
 
-        Query query = session.createQuery("select p.firstname, p.lastname, c.content, c.postedon from Comment c inner join Profile p on c.commenter = p.peopleentityid where c.postid = :postid");
-        query.setParameter("postid", postid);
-        List<Object[]> comments = query.list();
-        List<CommentResult> results = new ArrayList<>();
-        for (Object[] comment : comments) {
-            String name = comment[0].toString() + " " + comment[1].toString();
-            String content = comment[2].toString();
-            String date = new Date(((Timestamp) comment[3]).getTime()).toString();
-            results.add(new CommentResult(date, content, name));
+            Query query = session.createQuery(
+                    "select p.firstname, " +
+                            "p.lastname, " +
+                            "c.content, " +
+                            "c.postedon " +
+                            "from Comment c " +
+                            "inner join Profile p on c.commenter = p.peopleentityid " +
+                            "where c.postid = :postid");
+
+            query.setParameter("postid", postid);
+            List<Object[]> comments = query.list();
+            List<CommentResult> results = new ArrayList<>();
+            for (Object[] comment : comments) {
+                String name = comment[0].toString() + " " + comment[1].toString();
+                String content = comment[2].toString();
+                String date = new Date(((Timestamp) comment[3]).getTime()).toString();
+                results.add(new CommentResult(date, content, name));
+            }
+            session.close();
+            return ok(Json.toJson(results));
+        } else {
+            return forbidden();
         }
-        session.close();
-        return ok(Json.toJson(results));
     }
 
     public Result postComment() {
@@ -44,13 +61,17 @@ public class CommentController extends Controller {
 
         Comment comment = new Comment();
         comment.setPostid(body.get("postid").asInt());
-        comment.setCommenter(body.get("commenterid").asInt());
+        Integer commenterId = body.get("commenterid").asInt();
+        comment.setCommenter(commenterId);
         comment.setPostedon(new Timestamp(System.currentTimeMillis()));
         comment.setContent(body.get("content").asText());
         session.save(comment);
+        System.out.println("Commenter: " + commenterId);
 
-        Profile p = (Profile) session.createQuery("from Profile where peopleentityid = :id").setParameter("id", comment.getCommenter()).list().get(0);
-        CommentResult result = new CommentResult(new Date(comment.getPostedon().getTime()).toString(), comment.getContent(), p.getFirstname() + " " + p.getLastname());
+        Account account = session.get(Account.class, commenterId);
+        Profile profile = session.get(Profile.class, account.getProfileid());
+
+        CommentResult result = new CommentResult(new Date(comment.getPostedon().getTime()).toString(), comment.getContent(), profile.getFirstname() + " " + profile.getLastname());
         session.close();
         return ok(Json.toJson(result));
     }

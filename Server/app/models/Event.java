@@ -53,9 +53,7 @@ public class Event {
 
         if (postid != event.postid) return false;
         if (name != null ? !name.equals(event.name) : event.name != null) return false;
-        if (description != null ? !description.equals(event.description) : event.description != null) return false;
-
-        return true;
+        return description != null ? description.equals(event.description) : event.description == null;
     }
 
     @Override

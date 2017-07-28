@@ -19,6 +19,7 @@
         <mapping class="models.Company"/>
         <mapping class="models.Country"/>
         <mapping class="models.Event"/>
+        <mapping class="models.Notification"/>
         <mapping class="models.Eventmedia"/>
         <mapping class="models.Ghost"/>
         <mapping class="models.Group"/>
@@ -46,10 +47,6 @@
         <mapping class="models.Visibleby"/>
         <mapping class="models.Workevent"/>
         <mapping class="models.Grouppeople"/>
-        <!-- <property name="connection.username"/> -->
-        <!-- <property name="connection.password"/> -->
-
-        <!-- DB schema will be updated if needed -->
-        <!-- <property name="hbm2ddl.auto">update</property> -->
+        <mapping class="models.Claim"/>
     </session-factory>
 </hibernate-configuration>

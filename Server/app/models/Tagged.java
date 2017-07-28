@@ -53,9 +53,7 @@ public class Tagged {
 
         if (id != tagged.id) return false;
         if (profileid != null ? !profileid.equals(tagged.profileid) : tagged.profileid != null) return false;
-        if (postid != null ? !postid.equals(tagged.postid) : tagged.postid != null) return false;
-
-        return true;
+        return postid != null ? postid.equals(tagged.postid) : tagged.postid == null;
     }
 
     @Override

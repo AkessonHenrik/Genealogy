@@ -28,9 +28,7 @@ public class Post {
 
         Post post = (Post) o;
 
-        if (timedentityid != post.timedentityid) return false;
-
-        return true;
+        return timedentityid == post.timedentityid;
     }
 
     @Override

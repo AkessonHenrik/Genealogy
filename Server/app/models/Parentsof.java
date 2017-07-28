@@ -64,9 +64,7 @@ public class Parentsof {
 
         if (timedentityid != parentsof.timedentityid) return false;
         if (childid != parentsof.childid) return false;
-        if (parentsid != parentsof.parentsid) return false;
-
-        return true;
+        return parentsid == parentsof.parentsid;
     }
 
     @Override

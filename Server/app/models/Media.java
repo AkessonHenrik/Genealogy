@@ -54,9 +54,7 @@ public class Media {
 
         if (postid != media.postid) return false;
         if (path != null ? !path.equals(media.path) : media.path != null) return false;
-        if (type != null ? !type.equals(media.type) : media.type != null) return false;
-
-        return true;
+        return type != null ? type.equals(media.type) : media.type == null;
     }
 
     @Override

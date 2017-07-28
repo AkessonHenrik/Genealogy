@@ -42,9 +42,7 @@ public class Singletime {
         Singletime that = (Singletime) o;
 
         if (timeid != that.timeid) return false;
-        if (time != null ? !time.equals(that.time) : that.time != null) return false;
-
-        return true;
+        return time != null ? time.equals(that.time) : that.time == null;
     }
 
     @Override

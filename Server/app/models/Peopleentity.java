@@ -28,9 +28,7 @@ public class Peopleentity {
 
         Peopleentity that = (Peopleentity) o;
 
-        if (timedentityid != that.timedentityid) return false;
-
-        return true;
+        return timedentityid == that.timedentityid;
     }
 
     @Override

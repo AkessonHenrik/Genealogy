@@ -76,9 +76,7 @@ public class Comment {
         if (id != comment.id) return false;
         if (postid != null ? !postid.equals(comment.postid) : comment.postid != null) return false;
         if (commenter != null ? !commenter.equals(comment.commenter) : comment.commenter != null) return false;
-        if (postedon != null ? !postedon.equals(comment.postedon) : comment.postedon != null) return false;
-
-        return true;
+        return postedon != null ? postedon.equals(comment.postedon) : comment.postedon == null;
     }
 
     @Override

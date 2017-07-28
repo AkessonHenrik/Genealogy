@@ -29,9 +29,7 @@ public class Grouppeople {
 
         Grouppeople that = (Grouppeople) o;
 
-        if (id != that.id) return false;
-
-        return true;
+        return id == that.id;
     }
 
     @Override

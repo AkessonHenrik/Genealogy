@@ -39,9 +39,7 @@ public class Country {
         Country country = (Country) o;
 
         if (id != country.id) return false;
-        if (name != null ? !name.equals(country.name) : country.name != null) return false;
-
-        return true;
+        return name != null ? name.equals(country.name) : country.name == null;
     }
 
     @Override

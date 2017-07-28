@@ -1,9 +1,6 @@
 package models;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.*;
 
 /**
  * Created by Henrik on 18/06/2017.
@@ -16,6 +13,7 @@ public class Visibleby {
 
     @Id
     @Column(name = "id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     public int getId() {
         return id;
     }
@@ -54,9 +52,7 @@ public class Visibleby {
         if (id != visibleby.id) return false;
         if (timedentityid != null ? !timedentityid.equals(visibleby.timedentityid) : visibleby.timedentityid != null)
             return false;
-        if (accessid != null ? !accessid.equals(visibleby.accessid) : visibleby.accessid != null) return false;
-
-        return true;
+        return accessid != null ? accessid.equals(visibleby.accessid) : visibleby.accessid == null;
     }
 
     @Override

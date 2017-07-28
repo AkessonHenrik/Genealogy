@@ -52,10 +52,7 @@ public class Location {
         if (id != location.id) return false;
         if (cityprovinceid != null ? !cityprovinceid.equals(location.cityprovinceid) : location.cityprovinceid != null)
             return false;
-        if (provincecountryid != null ? !provincecountryid.equals(location.provincecountryid) : location.provincecountryid != null)
-            return false;
-
-        return true;
+        return provincecountryid != null ? provincecountryid.equals(location.provincecountryid) : location.provincecountryid == null;
     }
 
     @Override

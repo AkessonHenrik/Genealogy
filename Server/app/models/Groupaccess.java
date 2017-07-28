@@ -1,9 +1,6 @@
 package models;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.*;
 
 /**
  * Created by Henrik on 18/06/2017.
@@ -16,6 +13,7 @@ public class Groupaccess {
 
     @Id
     @Column(name = "id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     public int getId() {
         return id;
     }
@@ -53,9 +51,7 @@ public class Groupaccess {
 
         if (id != that.id) return false;
         if (groupid != null ? !groupid.equals(that.groupid) : that.groupid != null) return false;
-        if (accessid != null ? !accessid.equals(that.accessid) : that.accessid != null) return false;
-
-        return true;
+        return accessid != null ? accessid.equals(that.accessid) : that.accessid == null;
     }
 
     @Override
