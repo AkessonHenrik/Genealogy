@@ -1,3 +1,1 @@
-# Genealogy
-
-![alt](./Main.png)
+# Treemily

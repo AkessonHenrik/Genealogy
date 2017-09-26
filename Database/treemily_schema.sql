@@ -93,7 +93,7 @@ CREATE TABLE familytree.profile (
   gender         INTEGER                                    NOT NULL
 );
 CREATE TABLE familytree.relationship (
-  id       INTEGER REFERENCES familytree.peopleentity PRIMARY KEY,
+  peopleentityid       INTEGER REFERENCES familytree.peopleentity PRIMARY KEY,
   profile1 INTEGER REFERENCES familytree.profile,
   profile2 INTEGER REFERENCES familytree.profile,
   type     INTEGER
