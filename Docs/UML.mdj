@@ -3813,7 +3813,7 @@
 											"height": 13,
 											"autoResize": false,
 											"underline": false,
-											"text": "RelationshipTyoe",
+											"text": "RelationshipType",
 											"horizontalAlignment": 2,
 											"verticalAlignment": 5,
 											"wordWrap": false
@@ -22992,9 +22992,9 @@
 									"showShadow": true,
 									"containerChangeable": false,
 									"containerExtending": false,
-									"left": 666,
+									"left": 664,
 									"top": 922,
-									"width": 19.5126953125,
+									"width": 22,
 									"height": 13,
 									"autoResize": false,
 									"alpha": -0.4214193356007123,
@@ -24555,7 +24555,7 @@
 											"height": 13,
 											"autoResize": false,
 											"underline": false,
-											"text": "Surrogate",
+											"text": "Guardian",
 											"horizontalAlignment": 2,
 											"verticalAlignment": 5,
 											"wordWrap": false
@@ -25796,13 +25796,13 @@
 									"showShadow": true,
 									"containerChangeable": false,
 									"containerExtending": false,
-									"left": 611,
+									"left": 592,
 									"top": 1055,
-									"width": 72.6171875,
+									"width": 73,
 									"height": 13,
 									"autoResize": false,
-									"alpha": -3.1823863447736684,
-									"distance": 49.040799340956916,
+									"alpha": -3.17099594611532,
+									"distance": 68.0294054067798,
 									"hostEdge": {
 										"$ref": "AAAAAAFevSD36yN3asg="
 									},
@@ -25967,9 +25967,9 @@
 									"showShadow": true,
 									"containerChangeable": false,
 									"containerExtending": false,
-									"left": 682,
+									"left": 680,
 									"top": 1084,
-									"width": 21.68359375,
+									"width": 24,
 									"height": 13,
 									"autoResize": false,
 									"alpha": -0.5235987755982988,
@@ -26070,9 +26070,9 @@
 									"showShadow": true,
 									"containerChangeable": false,
 									"containerExtending": false,
-									"left": 714,
+									"left": 712,
 									"top": 1045,
-									"width": 21.68359375,
+									"width": 24,
 									"height": 13,
 									"autoResize": false,
 									"alpha": 0.5235987755982988,
@@ -27454,7 +27454,7 @@
 					"_parent": {
 						"$ref": "AAAAAAFF+qBWK6M3Z8Y="
 					},
-					"name": "RelationshipTyoe",
+					"name": "RelationshipType",
 					"visibility": "public",
 					"attributes": [
 						{
@@ -29017,7 +29017,7 @@
 					"_parent": {
 						"$ref": "AAAAAAFF+qBWK6M3Z8Y="
 					},
-					"name": "Surrogate",
+					"name": "Guardian",
 					"ownedElements": [
 						{
 							"_type": "UMLGeneralization",
