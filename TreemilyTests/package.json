@@ -1,0 +1,18 @@
+{
+  "name": "treemily_tests",
+  "version": "1.0.0",
+  "description": "A test collection for treemily",
+  "main": "",
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "Henrik Akesson",
+  "license": "ISC",
+  "dependencies": {
+    "chai": "^4.1.0",
+    "chai-as-promised": "^7.1.1",
+    "chai-http": "^3.0.0",
+    "chance": "^1.0.10",
+    "mocha": "^3.4.2"
+  }
+}

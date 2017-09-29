@@ -43,3 +43,4 @@
 /Client
 # Bigger files
 /Client/src/assets/*.mp4
+/TreemilyTests/node_modules
