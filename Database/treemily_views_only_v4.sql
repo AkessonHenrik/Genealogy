@@ -16,8 +16,8 @@ create view vtimeinterval as
   	timeinterval.idtime as id,
     '{'||array_to_string((array(select st1.time)||array(select st2.time)), ',')||'}' as time
   from timeinterval
-    left join singletime st1 on idsingletime1 = st1.idtime
-    left join singletime st2 on idsingletime2 = st2.idtime;
+    left join vsingletime st1 on idsingletime1 = st1.id
+    left join vsingletime st2 on idsingletime2 = st2.id;
 
 drop view if exists vcircasingletime cascade;
 create view vcircasingletime as
@@ -244,3 +244,14 @@ create view vnotvisibleby as
   from notvisibleby
     left join groupaccess on groupaccess.idaccess = notvisibleby.idaccess
     left join profileaccess on profileaccess.idaccess = notvisibleby.idaccess;
+
+drop view if exists vtag cascade;
+create view vtag as
+  select
+  	id,
+    idpost,
+	idprofile,
+    profile.lastname,
+    profile.firstname
+  from tag
+  	left join profile on profile.idparentable = tag.idprofile;
