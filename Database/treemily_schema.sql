@@ -2,183 +2,181 @@
 
 DROP SCHEMA IF EXISTS familytree CASCADE;
 CREATE SCHEMA familytree;
-CREATE TYPE familytree.MEDIATYPE AS ENUM ('video', 'audio', 'image', 'document');
-CREATE TYPE familytree.RELATIONSHIPTYPE AS ENUM ('partner', 'spouse', 'sibling', 'cousin', 'friend', 'other/unknown');
--- CREATE TYPE familytree.GENDER AS ENUM ('Male', 'Female', 'Other');
+set schema 'familytree';
 
-CREATE TABLE familytree.country (
+CREATE TABLE country (
   id   SERIAL PRIMARY KEY,
   name VARCHAR(30) UNIQUE NOT NULL
 );
-CREATE TABLE familytree.province (
+CREATE TABLE province (
   id   SERIAL PRIMARY KEY,
   name VARCHAR(30) UNIQUE NOT NULL
 );
-CREATE TABLE familytree.city (
+CREATE TABLE city (
   id   SERIAL PRIMARY KEY,
   name VARCHAR(30) UNIQUE NOT NULL
 );
-CREATE TABLE familytree.cityProvince (
+CREATE TABLE cityProvince (
   id         SERIAL PRIMARY KEY,
-  cityId     INTEGER REFERENCES familytree.city,
-  provinceId INTEGER REFERENCES familytree.province,
+  cityId     INTEGER REFERENCES city,
+  provinceId INTEGER REFERENCES province,
   UNIQUE (cityId, provinceId)
 );
-CREATE TABLE familytree.provinceCountry (
+CREATE TABLE provinceCountry (
   id         SERIAL PRIMARY KEY,
-  provinceId INTEGER REFERENCES familytree.province,
-  countryId  INTEGER REFERENCES familytree.country,
+  provinceId INTEGER REFERENCES province,
+  countryId  INTEGER REFERENCES country,
   UNIQUE (provinceId, countryId)
 );
 
-CREATE TABLE familytree.location (
+CREATE TABLE location (
   id                SERIAL PRIMARY KEY,
-  cityProvinceId    INTEGER REFERENCES familytree.cityProvince,
-  provinceCountryId INTEGER REFERENCES familytree.provinceCountry,
+  cityProvinceId    INTEGER REFERENCES cityProvince,
+  provinceCountryId INTEGER REFERENCES provinceCountry,
   UNIQUE (cityProvinceId, provinceCountryId)
 );
-CREATE TABLE familytree.company (
+CREATE TABLE company (
   id   SERIAL PRIMARY KEY,
   name VARCHAR(45) UNIQUE NOT NULL
 );
-CREATE TABLE familytree.time (
+CREATE TABLE time (
   id SERIAL PRIMARY KEY
 );
-CREATE TABLE familytree.singleTime (
-  timeId INTEGER REFERENCES familytree.time PRIMARY KEY,
+CREATE TABLE singleTime (
+  timeId INTEGER REFERENCES time PRIMARY KEY,
   time   DATE NOT NULL
 );
-CREATE TABLE familytree.timeinterval (
-  timeId    INTEGER REFERENCES familytree.time PRIMARY KEY,
+CREATE TABLE timeinterval (
+  timeId    INTEGER REFERENCES time PRIMARY KEY,
   beginTime DATE NOT NULL,
   endDate   DATE NOT NULL
 );
-CREATE TABLE familytree.timedEntity (
+CREATE TABLE timedEntity (
   id         SERIAL PRIMARY KEY,
-  timeId     INTEGER REFERENCES familytree.time NOT NULL,
+  timeId     INTEGER REFERENCES time NOT NULL,
   visibility INTEGER DEFAULT 0
 );
-CREATE TABLE familytree.post (
-  timedEntityId INTEGER REFERENCES familytree.timedEntity PRIMARY KEY
+CREATE TABLE post (
+  timedEntityId INTEGER REFERENCES timedEntity PRIMARY KEY
 );
-CREATE TABLE familytree.event (
-  postId      INTEGER REFERENCES familytree.post PRIMARY KEY,
+CREATE TABLE event (
+  postId      INTEGER REFERENCES post PRIMARY KEY,
   name        VARCHAR(45) NOT NULL,
   description TEXT
 );
-CREATE TABLE familytree.locatedEvent (
-  eventId    INTEGER REFERENCES familytree.event PRIMARY KEY,
-  locationId INTEGER REFERENCES familytree.location (id)
+CREATE TABLE locatedEvent (
+  eventId    INTEGER REFERENCES event PRIMARY KEY,
+  locationId INTEGER REFERENCES location (id)
 );
-CREATE TABLE familytree.workEvent (
-  eventId      INTEGER REFERENCES familytree.event PRIMARY KEY,
+CREATE TABLE workEvent (
+  eventId      INTEGER REFERENCES event PRIMARY KEY,
   positionHeld VARCHAR(45),
-  companyId    INTEGER REFERENCES familytree.company (id),
-  locationId   INTEGER REFERENCES familytree.location
+  companyId    INTEGER REFERENCES company (id),
+  locationId   INTEGER REFERENCES location
 );
-CREATE TABLE familytree.moveEvent (
-  eventId    INTEGER REFERENCES familytree.event PRIMARY KEY,
-  locationId INTEGER REFERENCES familytree.location NOT NULL
+CREATE TABLE moveEvent (
+  eventId    INTEGER REFERENCES event PRIMARY KEY,
+  locationId INTEGER REFERENCES location NOT NULL
 );
-CREATE TABLE familytree.peopleentity (
-  timedEntityId INTEGER REFERENCES familytree.timedEntity PRIMARY KEY
+CREATE TABLE peopleentity (
+  timedEntityId INTEGER REFERENCES timedEntity PRIMARY KEY
 );
-CREATE TABLE familytree.profile (
-  peopleEntityId INTEGER REFERENCES familytree.peopleentity PRIMARY KEY,
+CREATE TABLE profile (
+  peopleEntityId INTEGER REFERENCES peopleentity PRIMARY KEY,
   firstName      VARCHAR(45)                                NOT NULL,
   lastName       VARCHAR(45)                                NOT NULL,
   profilePicture INTEGER                                    NOT NULL,
-  born           INTEGER REFERENCES familytree.locatedEvent NOT NULL,
-  died           INTEGER REFERENCES familytree.locatedEvent,
+  born           INTEGER REFERENCES locatedEvent NOT NULL,
+  died           INTEGER REFERENCES locatedEvent,
   gender         INTEGER                                    NOT NULL
 );
-CREATE TABLE familytree.relationship (
-  peopleentityid       INTEGER REFERENCES familytree.peopleentity PRIMARY KEY,
-  profile1 INTEGER REFERENCES familytree.profile,
-  profile2 INTEGER REFERENCES familytree.profile,
+CREATE TABLE relationship (
+  peopleentityid       INTEGER REFERENCES peopleentity PRIMARY KEY,
+  profile1 INTEGER REFERENCES profile,
+  profile2 INTEGER REFERENCES profile,
   type     INTEGER
 );
-CREATE TABLE familytree.parentsOf (
-  timedEntityId INTEGER REFERENCES familytree.timedEntity PRIMARY KEY,
-  childId       INTEGER REFERENCES familytree.profile      NOT NULL,
-  parentsId     INTEGER REFERENCES familytree.peopleentity NOT NULL,
+CREATE TABLE parentsOf (
+  timedEntityId INTEGER REFERENCES timedEntity PRIMARY KEY,
+  childId       INTEGER REFERENCES profile      NOT NULL,
+  parentsId     INTEGER REFERENCES peopleentity NOT NULL,
   parentType    INTEGER                                    NOT NULL,
   UNIQUE (childId, parentsId)
 );
-CREATE TABLE familytree.access (
+CREATE TABLE access (
   id SERIAL PRIMARY KEY
 );
-CREATE TABLE familytree.visibleBy (
+CREATE TABLE visibleBy (
   id            SERIAL PRIMARY KEY,
-  timedEntityId INTEGER REFERENCES familytree.timedEntity,
-  accessId      INTEGER REFERENCES familytree.access,
+  timedEntityId INTEGER REFERENCES timedEntity,
+  accessId      INTEGER REFERENCES access,
   UNIQUE (timedEntityId, accessId)
 );
-CREATE TABLE familytree.notVisibleBy (
+CREATE TABLE notVisibleBy (
   id            SERIAL PRIMARY KEY,
-  timedEntityId INTEGER REFERENCES familytree.timedEntity,
-  accessId      INTEGER REFERENCES familytree.access,
+  timedEntityId INTEGER REFERENCES timedEntity,
+  accessId      INTEGER REFERENCES access,
   UNIQUE (timedEntityId, accessId)
 );
-CREATE TABLE familytree."group" (
+CREATE TABLE "group" (
   id    SERIAL PRIMARY KEY,
   name  VARCHAR(20),
-  owner INTEGER REFERENCES familytree.profile
+  owner INTEGER REFERENCES profile
 );
-CREATE TABLE familytree.groupAccess (
+CREATE TABLE groupAccess (
   id       SERIAL PRIMARY KEY,
-  groupId  INTEGER REFERENCES familytree."group",
-  accessId INTEGER REFERENCES familytree.access
+  groupId  INTEGER REFERENCES "group",
+  accessId INTEGER REFERENCES access
 );
-CREATE TABLE familytree.profileAccess (
+CREATE TABLE profileAccess (
   id        SERIAL PRIMARY KEY,
-  accessId  INTEGER REFERENCES familytree.access,
-  profileId INTEGER REFERENCES familytree.profile
+  accessId  INTEGER REFERENCES access,
+  profileId INTEGER REFERENCES profile
 );
-CREATE TABLE familytree.account (
-  profileId INTEGER REFERENCES familytree.profile PRIMARY KEY,
+CREATE TABLE account (
+  profileId INTEGER REFERENCES profile PRIMARY KEY,
   email     VARCHAR(60) NOT NULL,
   password  VARCHAR(20) NOT NULL
 );
-CREATE TABLE familytree.ghost (
-  profileId INTEGER REFERENCES familytree.profile PRIMARY KEY,
-  owner     INTEGER REFERENCES familytree.account
+CREATE TABLE ghost (
+  profileId INTEGER REFERENCES profile PRIMARY KEY,
+  owner     INTEGER REFERENCES account
 );
-CREATE TABLE familytree.timedEntityOwner (
+CREATE TABLE timedEntityOwner (
   id                     SERIAL PRIMARY KEY,
-  timedEntityId          INTEGER REFERENCES familytree.timedEntity,
-  peopleOrRelationshipId INTEGER REFERENCES familytree.peopleentity,
+  timedEntityId          INTEGER REFERENCES timedEntity,
+  peopleOrRelationshipId INTEGER REFERENCES peopleentity,
   UNIQUE (timedEntityId, peopleOrRelationshipId)
 );
-CREATE TABLE familytree.media (
-  postId INTEGER REFERENCES familytree.post PRIMARY KEY,
+CREATE TABLE media (
+  postId INTEGER REFERENCES post PRIMARY KEY,
   path   VARCHAR(100),
   type   INTEGER
 );
-ALTER TABLE familytree.profile
+ALTER TABLE profile
   ADD FOREIGN KEY (profilePicture)
-REFERENCES familytree.media;
-CREATE TABLE familytree.eventMedia (
+REFERENCES media;
+CREATE TABLE eventMedia (
   id      SERIAL PRIMARY KEY,
-  mediaId INTEGER REFERENCES familytree.media,
-  eventId INTEGER REFERENCES familytree.event,
+  mediaId INTEGER REFERENCES media,
+  eventId INTEGER REFERENCES event,
   UNIQUE (mediaId, eventId)
 );
-CREATE TABLE familytree.comment (
+CREATE TABLE comment (
   id        SERIAL PRIMARY KEY,
-  postId    INTEGER REFERENCES familytree.post,
-  commenter INTEGER REFERENCES familytree.account,
+  postId    INTEGER REFERENCES post,
+  commenter INTEGER REFERENCES account,
   postedOn  TIMESTAMP
 );
-CREATE TABLE familytree.tagged (
+CREATE TABLE tagged (
   id        SERIAL PRIMARY KEY,
-  profileId INTEGER REFERENCES familytree.profile,
-  postId    INTEGER REFERENCES familytree.post,
+  profileId INTEGER REFERENCES profile,
+  postId    INTEGER REFERENCES post,
   UNIQUE (profileId, postId)
 );
-CREATE TABLE familytree.pendingTagged (
+CREATE TABLE pendingTagged (
   id        SERIAL PRIMARY KEY,
-  profileId INTEGER REFERENCES familytree.profile,
-  postId    INTEGER REFERENCES familytree.post,
+  profileId INTEGER REFERENCES profile,
+  postId    INTEGER REFERENCES post,
   UNIQUE (profileId, postId)
 );
