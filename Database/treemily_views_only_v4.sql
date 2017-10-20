@@ -99,9 +99,13 @@ create view vevent as
     name,
     description,
     vpost.visibility,
-    vpost.time
+    vpost.time,
+    media.type,
+    media.path
   from event
-    inner join vpost on event.idpost = vpost.id;
+    inner join vpost on event.idpost = vpost.id
+    left join eventmedia on eventmedia.idevent = vpost.id
+	left join media on media.idpost = eventmedia.idmedia;
 
 drop view if exists vmedia cascade;
 create view vmedia as
@@ -154,6 +158,27 @@ create view vworkevent as
   from workevent
     inner join vlocatedevent on vlocatedevent.id = idlocatedevent
     inner join company on idcompany = company.id;
+
+
+drop view if exists vfullevent cascade;
+create view vfullevent as
+select distinct
+	vevent.*,
+    (case when workevent.idlocatedevent is not null then 'WorkEvent'
+    	 when moveevent.idlocatedevent is not null then 'MoveEvent'
+         when vlocatedevent.id is not null then 'LocatedEvent'
+         when vevent.id is not null then 'Event' end) as "Event Type",
+    vlocatedevent.idlocation,
+    vlocatedevent.country,
+    vlocatedevent.province,
+    vlocatedevent.city,
+    workevent.position,
+    company.name as company
+from vevent
+	left join vlocatedevent on vlocatedevent.id = vevent.id
+    left join moveevent on moveevent.idlocatedevent = vlocatedevent.id
+    left join workevent on workevent.idlocatedevent = vlocatedevent.id
+    left join company on company.id = workevent.idcompany;
 
 drop view if exists vparentable cascade;
 create view vparentable as
@@ -255,3 +280,27 @@ create view vtag as
     profile.firstname
   from tag
   	left join profile on profile.idparentable = tag.idprofile;
+
+
+drop view if exists vfullprofile cascade;
+create view vfullprofile as
+select
+	vprofile.*,
+    vfullevent.id as eventid,
+    vfullevent.name,
+    vfullevent.description,
+    vfullevent.visibility as "Event visibility",
+    vfullevent.time,
+    vfullevent.type as "Media type",
+    vfullevent.path as "Media path",
+    vfullevent."Event Type",
+    vfullevent.idlocation,
+    vfullevent.country,
+    vfullevent.province,
+    vfullevent.city,
+    vfullevent.position,
+	vfullevent.company
+from vprofile
+	left join accesscontrolledentityowner on accesscontrolledentityowner.idprofile = vprofile.id
+	left join accesscontrolledentity on accesscontrolledentity.id = accesscontrolledentityowner.idaccesscontrolledentity
+    left join vfullevent on vfullevent.id = accesscontrolledentity.id;

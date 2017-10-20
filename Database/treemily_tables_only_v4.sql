@@ -245,3 +245,11 @@ create table accesscontrolledentityowner(
     idprofile integer references profile,
     idaccesscontrolledentity integer references accesscontrolledentity,
     unique(idprofile, idaccesscontrolledentity));
+
+
+create table eventmedia (
+	id serial primary key,
+    idevent integer references event,
+    idmedia integer references media,
+    unique(idevent, idmedia)
+);
