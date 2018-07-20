@@ -61,7 +61,7 @@ create table singletime(
 );
 
 create table timeinterval(
-    idtime int references time primary KEY,
+    idtime int references time on delete cascade primary KEY,
     idsingletime1 int references singletime on delete cascade,
     idsingletime2 int references singletime on delete cascade,
     unique(idsingletime1, idsingletime2)
@@ -69,23 +69,23 @@ create table timeinterval(
 
 
 create table circasingletime(
-    idtime int references time primary key,
-    idtimeinterval int references timeinterval,
+    idtime int references time on delete cascade primary key,
+    idtimeinterval int references timeinterval on delete cascade,
     unique(idtimeinterval)
 );
 
 drop table if exists circatimeinterval cascade;
 create table circatimeinterval(
-    idtime int references time primary key,
-    idcircasingletime1 int references circasingletime,
-    idcircasingletime2 int references circasingletime,
+    idtime int references time on delete cascade primary key,
+    idcircasingletime1 int references circasingletime on delete cascade,
+    idcircasingletime2 int references circasingletime on delete cascade,
     unique(idcircasingletime1, idcircasingletime2)
 );
 
 create table singletimeandcircasingletime(
-    idtime int references time primary key,
-    idsingletime int references singletime,
-    idcircasingletime int references circasingletime,
+    idtime int references time on delete cascade primary key,
+    idsingletime int references singletime on delete cascade,
+    idcircasingletime int references circasingletime on delete cascade,
     unique(idsingletime, idcircasingletime)
 );
 
@@ -103,13 +103,13 @@ create table post(
 
 
 create table event(
-    idpost int references post primary KEY,
+    idpost int references post on delete cascade primary KEY,
     name varchar(80),
     description text);
 
 
 create table media(
-    idpost int references post primary KEY,
+    idpost int references post on delete cascade primary KEY,
     path varchar(120),
     type int);
 
@@ -138,32 +138,33 @@ create table location(
 
 
 create table locatedevent(
-    idevent int references event primary key,
+    idevent int references event on delete cascade primary key,
     idlocation int references location);
 
 
 
 create table moveevent(
-    idlocatedevent int references locatedevent primary key);
+    idlocatedevent int references locatedevent on delete cascade primary key);
 
 
 create table company(
     id serial primary key,
-    name varchar(80));
+    name varchar(80),
+    unique(name));
 
 create table workevent(
-    idlocatedevent int references locatedevent primary KEY,
+    idlocatedevent int references locatedevent on delete cascade primary KEY,
     position varchar(80),
     idcompany int references company);
 
 
 create table parentable(
-    idaccesscontrolledentity int references accesscontrolledentity primary key);
+    idaccesscontrolledentity int references accesscontrolledentity on delete cascade primary key);
 
 
 
 create table profile(
-    idparentable int references parentable primary key,
+    idparentable int references parentable on delete cascade primary key,
     title varchar(24),
     lastname varchar(80),
     firstname varchar(80),
@@ -175,7 +176,7 @@ create table profile(
 
 
 create table relationship(
-    idparentable int references parentable primary key,
+    idparentable int references parentable on delete cascade primary key,
     idprofile1 int references profile not null,
     idprofile2 int references profile not null,
     idrelationshiptype int references relationshiptype);
@@ -193,7 +194,7 @@ create table ghost(
     idaccount int references account);
 
 create table parentchild(
-    idaccesscontrolledentity int references accesscontrolledentity primary key,
+    idaccesscontrolledentity int references accesscontrolledentity on delete cascade primary key,
     idparentable int references parentable,
     idprofile int references profile);
 
@@ -218,7 +219,7 @@ create table profileaccess(
     idaccess integer references access primary key);
 
 create table visibleby(
-    idaccesscontrolledentity integer references accesscontrolledentity,
+    idaccesscontrolledentity integer references accesscontrolledentity on delete cascade,
     idaccess integer references access,
     unique (idaccesscontrolledentity, idaccess));
 
@@ -230,8 +231,8 @@ create table notvisibleby(
 create table tag(
     id serial primary key,
     approved boolean default null,
-    idpost integer references post,
-    idprofile integer references profile,
+    idpost integer references post on delete cascade,
+    idprofile integer references profile on delete cascade,
     unique(idpost, idprofile));
 
 create table comment(
@@ -242,14 +243,14 @@ create table comment(
 
 create table accesscontrolledentityowner(
     id serial primary key,
-    idprofile integer references profile,
-    idaccesscontrolledentity integer references accesscontrolledentity,
+    idprofile integer references profile on delete cascade,
+    idaccesscontrolledentity integer references accesscontrolledentity on delete cascade,
     unique(idprofile, idaccesscontrolledentity));
 
 
 create table eventmedia (
 	id serial primary key,
-    idevent integer references event,
-    idmedia integer references media,
+    idevent integer references event on delete cascade,
+    idmedia integer references media on delete cascade,
     unique(idevent, idmedia)
 );
